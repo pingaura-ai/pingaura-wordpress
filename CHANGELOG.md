@@ -6,6 +6,8 @@ All notable changes to this plugin are documented here. The format follows [Keep
 
 ### Changed
 
+- Tested up to WordPress 7.1.
+- The visit script is built from plain strings instead of a heredoc, as the WordPress.org Plugin Check requires.
 - WordPress.org contributor name in readme.txt.
 
 ## [1.0.0] - 2026-10-28

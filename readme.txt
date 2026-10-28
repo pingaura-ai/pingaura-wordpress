@@ -2,7 +2,7 @@
 Contributors: pingauraai
 Tags: ai traffic, chatgpt, analytics, ai crawlers, perplexity
 Requires at least: 6.0
-Tested up to: 6.9
+Tested up to: 7.1
 Requires PHP: 7.4
 Stable tag: 1.0.1
 License: GPLv2 or later
@@ -103,7 +103,8 @@ Not for visitors. An administrator who turns on test visits gets a cookie in the
 == Changelog ==
 
 = 1.0.1 =
-* Update the plugin's WordPress.org contributor name.
+* Tested up to WordPress 7.1.
+* Pass the WordPress.org Plugin Check.
 
 = 1.0.0 =
 * First release.

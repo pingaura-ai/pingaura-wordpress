@@ -69,19 +69,16 @@ final class PingAura_Telemetry_Tracker {
 			JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_SLASHES
 		);
 
-		$script = <<<JS
-(function (c) {
-	try {
-		if (c.cookie && document.cookie.indexOf(c.cookie) === -1) return;
-		if (!navigator.sendBeacon || navigator.webdriver) return;
-		var send = function () {
-			var body = JSON.stringify({ u: location.href, r: document.referrer, t: document.title });
-			navigator.sendBeacon(c.endpoint, new Blob([body], { type: 'text/plain' }));
-		};
-		if (document.readyState === 'complete') { setTimeout(send, 0); } else { addEventListener('load', function () { setTimeout(send, 0); }); }
-	} catch (e) {}
-})($config);
-JS;
+		$script = '(function(c){try{'
+			. 'if(c.cookie&&document.cookie.indexOf(c.cookie)===-1)return;'
+			. 'if(!navigator.sendBeacon||navigator.webdriver)return;'
+			. 'var send=function(){'
+			. 'var body=JSON.stringify({u:location.href,r:document.referrer,t:document.title});'
+			. "navigator.sendBeacon(c.endpoint,new Blob([body],{type:'text/plain'}));"
+			. '};'
+			. "if(document.readyState==='complete'){setTimeout(send,0);}"
+			. "else{addEventListener('load',function(){setTimeout(send,0);});}"
+			. '}catch(e){}})(' . $config . ');';
 
 		wp_print_inline_script_tag(
 			$script,
