@@ -1,0 +1,22 @@
+# Changelog
+
+All notable changes to this plugin are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and versions follow [Semantic Versioning](https://semver.org/).
+
+## [1.0.0] - 2026-10-28
+
+### Added
+
+- Visit tracking through a script that runs after the page has loaded, so cached pages are counted.
+- REST route that adds the visitor's IP address and user agent and forwards visits to PingAura, keeping the ingest key on the server.
+- Optional server-side reporting of AI crawler requests, with a filter for the user-agent pattern.
+- Off, Test and Live modes. New installs start in Test mode.
+- Settings page with connection tests, a per-browser test switch and the last response from PingAura.
+- Cache clearing for LiteSpeed Cache, WP Rocket and WP Super Cache when settings are saved.
+- Events are forwarded after the response has been sent, and sending pauses for two minutes after a failed request.
+- Query strings other than `utm_*` tags and fragments are stripped from page URLs, and query strings from referrers.
+- Logged-in users are skipped in Live mode.
+- `PINGAURA_TELEMETRY_KEY` constant for keeping the key in `wp-config.php`.
+- `pingaura_telemetry_should_track`, `pingaura_telemetry_track_logged_in_users`, `pingaura_telemetry_crawler_pattern` and `pingaura_telemetry_client_ip` filters.
+- Suggested privacy policy text.
+
+[1.0.0]: https://github.com/pingaura-ai/pingaura-wordpress/releases/tag/v1.0.0

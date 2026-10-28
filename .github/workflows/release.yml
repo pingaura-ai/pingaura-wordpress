@@ -1,0 +1,31 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Check versions match the tag
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          grep -q "^ \* Version:           ${tag}$" pingaura-telemetry.php
+          grep -q "^Stable tag: ${tag}$" readme.txt
+          grep -q "'PINGAURA_TELEMETRY_VERSION', '${tag}'" pingaura-telemetry.php
+          grep -q "^## \[${tag}\]" CHANGELOG.md
+          grep -q "^= ${tag} =$" readme.txt
+      - name: Build zip
+        run: |
+          mkdir -p build
+          git archive --format=tar --prefix=pingaura-telemetry/ HEAD | tar -x -C build
+          (cd build && zip -qr ../pingaura-telemetry.zip pingaura-telemetry)
+      - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
+        with:
+          files: pingaura-telemetry.zip
+          generate_release_notes: true
