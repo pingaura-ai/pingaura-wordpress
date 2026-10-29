@@ -25,6 +25,7 @@ final class PingAura_Telemetry_Admin {
 		add_action( 'admin_post_pingaura_telemetry_save', array( __CLASS__, 'handle_save' ) );
 		add_action( 'admin_post_pingaura_telemetry_test', array( __CLASS__, 'handle_test' ) );
 		add_action( 'admin_post_pingaura_telemetry_test_cookie', array( __CLASS__, 'handle_test_cookie' ) );
+		add_action( 'admin_post_pingaura_telemetry_indexnow_submit_all', array( __CLASS__, 'handle_indexnow_submit_all' ) );
 		add_filter( 'plugin_action_links_' . plugin_basename( PINGAURA_TELEMETRY_FILE ), array( __CLASS__, 'action_links' ) );
 	}
 
@@ -85,6 +86,7 @@ final class PingAura_Telemetry_Admin {
 			: array();
 
 		PingAura_Telemetry_Settings::save( $input );
+		PingAura_Telemetry_IndexNow::set_enabled( ! empty( $input['indexnow'] ) );
 
 		// Page caches keep serving the old script until they are cleared.
 		do_action( 'litespeed_purge_all' ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- LiteSpeed Cache's own purge hook.
@@ -136,6 +138,26 @@ final class PingAura_Telemetry_Admin {
 	}
 
 	/**
+	 * Submits every published page to IndexNow.
+	 */
+	public static function handle_indexnow_submit_all() {
+		self::require_capability();
+		check_admin_referer( 'pingaura_telemetry_indexnow_submit_all' );
+
+		$status = PingAura_Telemetry_IndexNow::submit_all();
+		$last   = PingAura_Telemetry_IndexNow::last_status();
+
+		self::redirect(
+			sprintf(
+				/* translators: 1: number of URLs, 2: response from IndexNow. */
+				__( 'Submitted %1$d URLs. IndexNow replied: %2$s', 'pingaura-telemetry' ),
+				$last ? (int) $last['urls'] : 0,
+				$status
+			)
+		);
+	}
+
+	/**
 	 * Sets or clears the test cookie in the admin's browser.
 	 */
 	public static function handle_test_cookie() {
@@ -180,6 +202,8 @@ final class PingAura_Telemetry_Admin {
 		$constant = PingAura_Telemetry_Settings::key_is_constant();
 		$has_key  = PingAura_Telemetry_Settings::is_valid_key( $key );
 		$test_on  = isset( $_COOKIE[ PingAura_Telemetry_Tracker::TEST_COOKIE ] ) && '1' === $_COOKIE[ PingAura_Telemetry_Tracker::TEST_COOKIE ];
+		$indexnow = PingAura_Telemetry_IndexNow::is_enabled();
+		$in_last  = PingAura_Telemetry_IndexNow::last_status();
 
 		delete_transient( self::notice_key() );
 		?>
@@ -273,6 +297,27 @@ final class PingAura_Telemetry_Admin {
 							<p class="description"><?php esc_html_e( 'Crawlers do not run scripts, so they are recorded on the server. A page cache answers most requests before WordPress runs; exclude AI crawler user agents from your cache to record them.', 'pingaura-telemetry' ); ?></p>
 						</td>
 					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'IndexNow', 'pingaura-telemetry' ); ?></th>
+						<td>
+							<label>
+								<input type="checkbox" name="<?php echo esc_attr( $name ); ?>[indexnow]" value="1" <?php checked( $indexnow ); ?>>
+								<?php esc_html_e( 'Tell Bing and other IndexNow search engines when a page is published or updated', 'pingaura-telemetry' ); ?>
+							</label>
+							<p class="description"><?php esc_html_e( 'Bing powers the web results in ChatGPT search and Copilot, so new pages can appear in AI answers sooner. Works without a PingAura key.', 'pingaura-telemetry' ); ?></p>
+							<?php if ( $indexnow ) : ?>
+								<p class="description">
+									<?php
+									printf(
+										/* translators: %s: key file URL. */
+										esc_html__( 'Key file: %s', 'pingaura-telemetry' ),
+										'<a href="' . esc_url( PingAura_Telemetry_IndexNow::key_location() ) . '" target="_blank" rel="noopener noreferrer">' . esc_html( PingAura_Telemetry_IndexNow::key_location() ) . '</a>'
+									);
+									?>
+								</p>
+							<?php endif; ?>
+						</td>
+					</tr>
 				</table>
 
 				<?php submit_button(); ?>
@@ -301,11 +346,39 @@ final class PingAura_Telemetry_Admin {
 				</button>
 			</form>
 
+			<?php if ( $indexnow ) : ?>
+				<h2><?php esc_html_e( 'Submit existing pages', 'pingaura-telemetry' ); ?></h2>
+				<p><?php esc_html_e( 'Send every published page to IndexNow once, for example right after turning it on.', 'pingaura-telemetry' ); ?></p>
+				<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+					<?php wp_nonce_field( 'pingaura_telemetry_indexnow_submit_all' ); ?>
+					<input type="hidden" name="action" value="pingaura_telemetry_indexnow_submit_all">
+					<button class="button"><?php esc_html_e( 'Submit all published pages', 'pingaura-telemetry' ); ?></button>
+				</form>
+			<?php endif; ?>
+
 			<table class="form-table" role="presentation">
 				<tr>
 					<th scope="row"><?php esc_html_e( 'Last response', 'pingaura-telemetry' ); ?></th>
 					<td><code><?php echo esc_html( $last ? $last['status'] . ' · ' . $last['at'] : __( 'None yet', 'pingaura-telemetry' ) ); ?></code></td>
 				</tr>
+				<?php if ( $in_last ) : ?>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Last IndexNow submission', 'pingaura-telemetry' ); ?></th>
+						<td>
+							<code>
+								<?php
+								printf(
+									/* translators: 1: status, 2: number of URLs, 3: time. */
+									esc_html__( '%1$s · %2$d URLs · %3$s', 'pingaura-telemetry' ),
+									esc_html( $in_last['status'] ),
+									(int) $in_last['urls'],
+									esc_html( $in_last['at'] )
+								);
+								?>
+							</code>
+						</td>
+					</tr>
+				<?php endif; ?>
 				<tr>
 					<th scope="row"><?php esc_html_e( 'Your IP address', 'pingaura-telemetry' ); ?></th>
 					<td><code><?php echo esc_html( (string) PingAura_Telemetry_Tracker::client_ip() ); ?></code></td>

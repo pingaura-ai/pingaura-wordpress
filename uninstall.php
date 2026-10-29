@@ -13,6 +13,8 @@ defined( 'WP_UNINSTALL_PLUGIN' ) || exit;
 function pingaura_telemetry_uninstall_site() {
 	delete_option( 'pingaura_telemetry' );
 	delete_option( 'pingaura_telemetry_status' );
+	delete_option( 'pingaura_telemetry_indexnow' );
+	delete_option( 'pingaura_telemetry_indexnow_status' );
 	delete_transient( 'pingaura_telemetry_backoff' );
 }
 
