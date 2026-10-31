@@ -2,6 +2,14 @@
 
 All notable changes to this plugin are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and versions follow [Semantic Versioning](https://semver.org/).
 
+## [1.2.0] - Unreleased
+
+### Added
+
+- Optional contact-click tracking with a PingAura browser key. The browser script follows the same modes as the visit script and sends the Domain setting.
+- `click` value for the `$kind` argument of the `pingaura_telemetry_should_track` filter.
+- The script is excluded from delayed JavaScript in LiteSpeed Cache and WP Rocket.
+
 ## [1.1.0] - 2026-10-29
 
 ### Added
@@ -34,6 +42,7 @@ All notable changes to this plugin are documented here. The format follows [Keep
 - `pingaura_telemetry_should_track`, `pingaura_telemetry_track_logged_in_users`, `pingaura_telemetry_crawler_pattern` and `pingaura_telemetry_client_ip` filters.
 - Suggested privacy policy text.
 
+[1.2.0]: https://github.com/pingaura-ai/pingaura-wordpress/releases/tag/v1.2.0
 [1.1.0]: https://github.com/pingaura-ai/pingaura-wordpress/releases/tag/v1.1.0
 [1.0.1]: https://github.com/pingaura-ai/pingaura-wordpress/releases/tag/v1.0.1
 [1.0.0]: https://github.com/pingaura-ai/pingaura-wordpress/releases/tag/v1.0.0

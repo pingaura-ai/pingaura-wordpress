@@ -14,6 +14,16 @@ For Next.js, Node.js and Cloudflare Workers, use [`@pingaura/telemetry`](https:/
 - If PingAura is unreachable or rejects an event, sending pauses for two minutes.
 - No cookies are set for visitors.
 
+## Contact clicks (optional)
+
+Save a browser key (PingAura: Settings, API & MCP, Create key, Browser) in the **Browser key** field to record clicks on phone, email and WhatsApp links, including the Joinchat button, by page and AI source.
+
+- The plugin loads `https://telemetry.pingaura.ai/t.js` with `data-key` and `data-domain` attributes, deferred. `data-domain` is the Domain setting. The browser key is public.
+- It follows the same modes as visits. In Test mode a small inline loader adds the script only in browsers with test visits turned on.
+- The number, address and message are not sent. The script sets no cookies and keeps the landing source in local storage for 30 minutes.
+- The script is excluded from delayed JavaScript in LiteSpeed Cache (`litespeed_optm_js_defer_exc`) and WP Rocket (`rocket_delay_js_exclusions`).
+- `pingaura_telemetry_should_track` is called with `$kind = 'click'` before the script is added.
+
 ## Install
 
 1. Download `pingaura-telemetry.zip` from the [latest release](../../releases/latest).

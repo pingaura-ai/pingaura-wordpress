@@ -54,7 +54,7 @@ final class PingAura_Telemetry_Admin {
 			__( 'PingAura Telemetry', 'pingaura-telemetry' ),
 			wp_kses_post(
 				wpautop(
-					__( 'When you visit this site, we send the address of the page you viewed (without query parameters other than utm_ campaign tags), its title, the address of the page that referred you, your IP address and your browser\'s user agent to PingAura, an analytics service, to measure visits from AI assistants. Your IP address is used to determine your country. No cookies are set. See PingAura\'s privacy policy: https://www.pingaura.ai/privacy-policy', 'pingaura-telemetry' )
+					__( 'When you visit this site, we send the address of the page you viewed (without query parameters other than utm_ campaign tags), its title, the address of the page that referred you, your IP address and your browser\'s user agent to PingAura, an analytics service, to measure visits from AI assistants. Your IP address is used to determine your country. No cookies are set. If contact-click tracking is on, a script loaded from PingAura records when you click a phone, email or WhatsApp link on this site, with the page and the site or AI assistant that brought you here, but not the number, address or message. It keeps that source in your browser\'s local storage for 30 minutes. See PingAura\'s privacy policy: https://www.pingaura.ai/privacy-policy', 'pingaura-telemetry' )
 				)
 			)
 		);
@@ -295,6 +295,13 @@ final class PingAura_Telemetry_Admin {
 								<?php esc_html_e( 'Report requests from AI crawlers such as GPTBot and ClaudeBot (Live mode only)', 'pingaura-telemetry' ); ?>
 							</label>
 							<p class="description"><?php esc_html_e( 'Crawlers do not run scripts, so they are recorded on the server. A page cache answers most requests before WordPress runs; exclude AI crawler user agents from your cache to record them.', 'pingaura-telemetry' ); ?></p>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="pingaura-browser-key"><?php esc_html_e( 'Browser key', 'pingaura-telemetry' ); ?></label></th>
+						<td>
+							<input id="pingaura-browser-key" type="text" class="regular-text" autocomplete="off" spellcheck="false" name="<?php echo esc_attr( $name ); ?>[browser_key]" value="<?php echo esc_attr( PingAura_Telemetry_Settings::browser_key() ); ?>" placeholder="pa_…">
+							<p class="description"><?php esc_html_e( 'Public key from PingAura (Settings, API & MCP, Create key, Browser). Records clicks on phone, email and WhatsApp links, including the Joinchat button. Safe to show in your page\'s HTML.', 'pingaura-telemetry' ); ?></p>
 						</td>
 					</tr>
 					<tr>

@@ -19,7 +19,7 @@ final class PingAura_Telemetry_Settings {
 	/**
 	 * Settings merged with their defaults.
 	 *
-	 * @return array{ingest_key: string, domain: string, mode: string, crawlers: bool}
+	 * @return array{ingest_key: string, domain: string, mode: string, crawlers: bool, browser_key: string}
 	 */
 	public static function get() {
 		$saved = get_option( self::OPTION, array() );
@@ -27,12 +27,23 @@ final class PingAura_Telemetry_Settings {
 		return wp_parse_args(
 			is_array( $saved ) ? $saved : array(),
 			array(
-				'ingest_key' => '',
-				'domain'     => self::site_domain(),
-				'mode'       => 'test',
-				'crawlers'   => false,
+				'ingest_key'  => '',
+				'domain'      => self::site_domain(),
+				'mode'        => 'test',
+				'crawlers'    => false,
+				'browser_key' => '',
 			)
 		);
+	}
+
+	/**
+	 * The browser key, or an empty string when none is saved.
+	 *
+	 * @return string
+	 */
+	public static function browser_key() {
+		$key = (string) self::get()['browser_key'];
+		return self::is_valid_browser_key( $key ) ? $key : '';
 	}
 
 	/**
@@ -61,7 +72,9 @@ final class PingAura_Telemetry_Settings {
 	 * Validates submitted values and stores them.
 	 *
 	 * A blank or malformed key keeps the stored one, so a browser autofilling a
-	 * saved password into the key field can never replace it.
+	 * saved password into the key field can never replace it. The browser key
+	 * is public and shown in the field, so a blank value removes it and a
+	 * malformed one keeps the stored key.
 	 *
 	 * @param array $input Raw form values.
 	 */
@@ -70,6 +83,7 @@ final class PingAura_Telemetry_Settings {
 		$key     = isset( $input['ingest_key'] ) ? trim( sanitize_text_field( $input['ingest_key'] ) ) : '';
 		$domain  = isset( $input['domain'] ) ? self::normalize_domain( sanitize_text_field( $input['domain'] ) ) : '';
 		$mode    = isset( $input['mode'] ) ? sanitize_key( $input['mode'] ) : '';
+		$browser = isset( $input['browser_key'] ) ? trim( sanitize_text_field( $input['browser_key'] ) ) : '';
 
 		if ( ! empty( $input['clear_key'] ) ) {
 			$key = '';
@@ -77,13 +91,18 @@ final class PingAura_Telemetry_Settings {
 			$key = $current['ingest_key'];
 		}
 
+		if ( '' !== $browser && ! self::is_valid_browser_key( $browser ) ) {
+			$browser = self::is_valid_browser_key( $current['browser_key'] ) ? $current['browser_key'] : '';
+		}
+
 		update_option(
 			self::OPTION,
 			array(
-				'ingest_key' => $key,
-				'domain'     => '' !== $domain ? $domain : self::site_domain(),
-				'mode'       => in_array( $mode, self::MODES, true ) ? $mode : 'test',
-				'crawlers'   => ! empty( $input['crawlers'] ),
+				'ingest_key'  => $key,
+				'domain'      => '' !== $domain ? $domain : self::site_domain(),
+				'mode'        => in_array( $mode, self::MODES, true ) ? $mode : 'test',
+				'crawlers'    => ! empty( $input['crawlers'] ),
+				'browser_key' => $browser,
 			),
 			true
 		);
@@ -97,6 +116,16 @@ final class PingAura_Telemetry_Settings {
 	 */
 	public static function is_valid_key( $key ) {
 		return is_string( $key ) && 1 === preg_match( '/^pa_[A-Za-z0-9]+_[A-Za-z0-9_-]+$/', $key );
+	}
+
+	/**
+	 * Whether a value has the shape of a PingAura browser key: pa_<id>_<token>.
+	 *
+	 * @param string $key Candidate key.
+	 * @return bool
+	 */
+	public static function is_valid_browser_key( $key ) {
+		return is_string( $key ) && 1 === preg_match( '/^pa_[A-Za-z0-9]+_[A-Za-z0-9]+$/', $key );
 	}
 
 	/**

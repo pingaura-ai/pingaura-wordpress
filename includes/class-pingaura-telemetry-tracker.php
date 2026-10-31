@@ -18,6 +18,10 @@ defined( 'ABSPATH' ) || exit;
  *
  * AI crawlers do not run scripts, so they are reported from PHP. That only
  * works for requests a page cache lets through to WordPress.
+ *
+ * With a browser key saved, PingAura's browser script is also loaded to
+ * record clicks on contact links. It sends straight to PingAura with the
+ * public browser key.
  */
 final class PingAura_Telemetry_Tracker {
 
@@ -26,6 +30,10 @@ final class PingAura_Telemetry_Tracker {
 	const REST_NAMESPACE = 'pingaura-telemetry/v1';
 
 	const MAX_BODY_BYTES = 4096;
+
+	const CLICK_SCRIPT_HANDLE = 'pingaura-telemetry-clicks';
+
+	const CLICK_SCRIPT_URL = 'https://telemetry.pingaura.ai/t.js';
 
 	const CRAWLER_PATTERN = '/GPTBot|ChatGPT-User|OAI-SearchBot|ClaudeBot|Claude-User|Claude-SearchBot|anthropic-ai|PerplexityBot|Perplexity-User|Google-Extended|Google-CloudVertexBot|Gemini-Deep-Research|Bytespider|CCBot|Amazonbot|Applebot-Extended|meta-externalagent|cohere-ai|DuckAssistBot|MistralAI-User|YouBot/i';
 
@@ -36,6 +44,139 @@ final class PingAura_Telemetry_Tracker {
 		add_action( 'wp_footer', array( __CLASS__, 'print_script' ), 99 );
 		add_action( 'rest_api_init', array( __CLASS__, 'register_route' ) );
 		add_action( 'template_redirect', array( __CLASS__, 'track_crawler' ), 0 );
+		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'enqueue_click_script' ) );
+		add_filter( 'script_loader_tag', array( __CLASS__, 'click_script_tag' ), 10, 2 );
+
+		if ( '' !== PingAura_Telemetry_Settings::browser_key() ) {
+			add_filter( 'rocket_delay_js_exclusions', array( __CLASS__, 'exclude_click_script' ) );
+			add_filter( 'litespeed_optm_js_defer_exc', array( __CLASS__, 'exclude_click_script' ) );
+		}
+	}
+
+	/**
+	 * Loads the contact-click script when a browser key is saved.
+	 *
+	 * It follows the same rules as the visit script. In Live mode it is left out
+	 * for logged-in users. In Test mode a small loader is printed for everyone
+	 * and adds the script only in a browser holding the test cookie, so cached
+	 * pages behave the same for every visitor.
+	 */
+	public static function enqueue_click_script() {
+		$settings = PingAura_Telemetry_Settings::get();
+		$key      = PingAura_Telemetry_Settings::browser_key();
+
+		if ( '' === $key || 'off' === $settings['mode'] ) {
+			return;
+		}
+		if ( 'live' === $settings['mode'] && is_user_logged_in() && ! self::track_logged_in_users() ) {
+			return;
+		}
+
+		/** This filter is documented in includes/class-pingaura-telemetry-tracker.php */
+		if ( ! apply_filters( 'pingaura_telemetry_should_track', true, 'click' ) ) {
+			return;
+		}
+
+		if ( 'test' === $settings['mode'] ) {
+			add_action( 'wp_head', array( __CLASS__, 'print_click_loader' ) );
+			return;
+		}
+
+		wp_enqueue_script(
+			self::CLICK_SCRIPT_HANDLE,
+			self::CLICK_SCRIPT_URL,
+			array(),
+			PINGAURA_TELEMETRY_VERSION,
+			array(
+				'in_footer' => false,
+				'strategy'  => 'defer',
+			)
+		);
+	}
+
+	/**
+	 * Prints the Test mode loader for the contact-click script.
+	 */
+	public static function print_click_loader() {
+		$config = wp_json_encode(
+			array(
+				'cookie' => self::TEST_COOKIE . '=1',
+				'src'    => add_query_arg( 'ver', PINGAURA_TELEMETRY_VERSION, self::CLICK_SCRIPT_URL ),
+				'key'    => PingAura_Telemetry_Settings::browser_key(),
+				'domain' => self::click_domain(),
+			),
+			JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_SLASHES
+		);
+
+		$script = '(function(c){try{'
+			. 'if(document.cookie.indexOf(c.cookie)===-1)return;'
+			. "var s=document.createElement('script');"
+			. 's.src=c.src;s.defer=true;'
+			. "s.setAttribute('data-key',c.key);"
+			. "s.setAttribute('data-domain',c.domain);"
+			. 'document.head.appendChild(s);'
+			. '}catch(e){}})(' . $config . ');';
+
+		wp_print_inline_script_tag(
+			$script,
+			array(
+				'id'                      => 'pingaura-telemetry-clicks-loader',
+				'data-no-optimize'        => '1',
+				'data-no-defer'           => '1',
+				'data-cfasync'            => 'false',
+				'data-pagespeed-no-defer' => true,
+			)
+		);
+	}
+
+	/**
+	 * Adds the browser key and domain to the contact-click script tag, and
+	 * defer on WordPress versions before 6.3, which ignore the strategy.
+	 *
+	 * @param string $tag    Script tag.
+	 * @param string $handle Script handle.
+	 * @return string
+	 */
+	public static function click_script_tag( $tag, $handle ) {
+		if ( self::CLICK_SCRIPT_HANDLE !== $handle ) {
+			return $tag;
+		}
+
+		$attributes = sprintf(
+			' data-key="%s" data-domain="%s" data-no-optimize="1" data-no-defer="1" data-cfasync="false"',
+			esc_attr( PingAura_Telemetry_Settings::browser_key() ),
+			esc_attr( self::click_domain() )
+		);
+		if ( ! preg_match( '/\sdefer[\s=>]/', $tag ) ) {
+			$attributes .= ' defer';
+		}
+
+		return preg_replace( '/<script\b/', '<script' . $attributes, $tag, 1 );
+	}
+
+	/**
+	 * The domain sent with clicks: the saved Domain setting, as for visits.
+	 *
+	 * @return string
+	 */
+	private static function click_domain() {
+		$domain = (string) PingAura_Telemetry_Settings::get()['domain'];
+		return '' !== $domain ? $domain : PingAura_Telemetry_Settings::site_domain();
+	}
+
+	/**
+	 * Keeps optimisation plugins from delaying the contact-click script until
+	 * the visitor interacts with the page, so the first tap is counted.
+	 *
+	 * @param mixed $excluded Excluded script patterns.
+	 * @return mixed
+	 */
+	public static function exclude_click_script( $excluded ) {
+		if ( ! is_array( $excluded ) ) {
+			return $excluded;
+		}
+		$excluded[] = 'telemetry.pingaura.ai/t.js';
+		return $excluded;
 	}
 
 	/**
@@ -138,7 +279,8 @@ final class PingAura_Telemetry_Tracker {
 		 * consent.
 		 *
 		 * @param bool   $track Whether to record the event.
-		 * @param string $kind  'visit' for a page view, 'crawler' for an AI crawler request.
+		 * @param string $kind  'visit' for a page view, 'crawler' for an AI crawler request,
+	 *                      'click' for loading the contact-click script.
 		 */
 		if ( ! apply_filters( 'pingaura_telemetry_should_track', true, 'visit' ) ) {
 			return $done;
