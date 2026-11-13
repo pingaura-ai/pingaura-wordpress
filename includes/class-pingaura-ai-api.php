@@ -221,13 +221,12 @@ final class PingAura_AI_Api {
 	 */
 	public static function fixes() {
 		$response = self::request( 'GET', '/api/wordpress/fixes' );
-		if ( ! is_wp_error( $response ) && 200 === (int) wp_remote_retrieve_response_code( $response ) && ! self::verify_response( $response ) ) {
-			return new WP_Error( 'pingaura_ai_signature', __( 'The response from PingAura could not be verified, so no fixes are shown.', 'pingaura-telemetry' ) );
-		}
-
 		$data = self::decode( $response );
 		if ( is_wp_error( $data ) ) {
 			return $data;
+		}
+		if ( 200 !== (int) wp_remote_retrieve_response_code( $response ) || ! self::verify_response( $response ) ) {
+			return new WP_Error( 'pingaura_ai_signature', __( 'The response from PingAura could not be verified, so no fixes are shown.', 'pingaura-telemetry' ) );
 		}
 		if ( ! isset( $data['fixes'] ) || ! is_array( $data['fixes'] ) ) {
 			return new WP_Error( 'pingaura_ai_bad_response', __( 'PingAura sent an unexpected response.', 'pingaura-telemetry' ) );
