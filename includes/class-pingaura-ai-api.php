@@ -288,7 +288,12 @@ final class PingAura_AI_Api {
 			)
 		);
 
-		return $blocking && ! is_wp_error( self::decode( $response ) );
+		if ( ! $blocking || is_wp_error( $response ) ) {
+			return false;
+		}
+
+		// A 401 means PingAura already refuses this site's credentials, so it is disconnected there too.
+		return 401 === (int) wp_remote_retrieve_response_code( $response ) || ! is_wp_error( self::decode( $response ) );
 	}
 
 	/**
@@ -390,6 +395,14 @@ final class PingAura_AI_Api {
 
 		$code = (int) wp_remote_retrieve_response_code( $response );
 		$data = json_decode( wp_remote_retrieve_body( $response ), true );
+
+		if ( 401 === $code && self::is_connected() ) {
+			return new WP_Error(
+				'pingaura_ai_http_401',
+				__( 'PingAura no longer accepts this site\'s connection, for example because it was disconnected in PingAura. On the PingAura AI page, click Disconnect, then connect again.', 'pingaura-telemetry' ),
+				array( 'status' => 401 )
+			);
+		}
 
 		if ( $code < 200 || $code >= 300 ) {
 			$error = is_array( $data ) && isset( $data['error'] ) && is_string( $data['error'] ) ? sanitize_key( $data['error'] ) : '';
