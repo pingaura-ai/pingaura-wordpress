@@ -221,7 +221,7 @@ final class PingAura_AI_Api {
 	 */
 	public static function fixes() {
 		$response = self::request( 'GET', '/api/wordpress/fixes' );
-		$data = self::decode( $response );
+		$data     = self::decode( $response );
 		if ( is_wp_error( $data ) ) {
 			return $data;
 		}

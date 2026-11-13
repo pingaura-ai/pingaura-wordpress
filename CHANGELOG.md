@@ -18,7 +18,7 @@ All notable changes to this plugin are documented here. The format follows [Keep
 
 - The settings page moved from Settings to PingAura AI → Settings. The old address redirects.
 
-## [1.2.0] - Unreleased
+## [1.2.0] - 2026-11-02
 
 ### Added
 

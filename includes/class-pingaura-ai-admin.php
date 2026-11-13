@@ -316,7 +316,7 @@ final class PingAura_AI_Admin {
 					<div class="notice notice-error"><p><?php echo esc_html( $url->get_error_message() ); ?></p></div>
 					<p><a class="button" href="<?php echo esc_url( self::panel_url() ); ?>"><?php esc_html_e( 'Try again', 'pingaura-telemetry' ); ?></a></p>
 				<?php else : ?>
-					<iframe class="pingaura-ai-frame" src="<?php echo esc_url( $url ); ?>" title="<?php esc_attr_e( 'PingAura', 'pingaura-telemetry' ); ?>" referrerpolicy="strict-origin"></iframe>
+					<iframe class="pingaura-ai-frame" src="<?php echo esc_url( self::with_locale( $url ) ); ?>" title="<?php esc_attr_e( 'PingAura', 'pingaura-telemetry' ); ?>" referrerpolicy="strict-origin"></iframe>
 				<?php endif; ?>
 			<?php endif; ?>
 		</div>
@@ -435,6 +435,23 @@ final class PingAura_AI_Admin {
 			<?php endif; ?>
 		</div>
 		<?php
+	}
+
+	/**
+	 * Adds the admin's language to a panel URL, before the token fragment, so the panel matches wp-admin.
+	 *
+	 * @param string $url Panel URL from PingAura.
+	 * @return string
+	 */
+	private static function with_locale( $url ) {
+		$language = strtolower( substr( get_user_locale(), 0, 2 ) );
+		if ( 1 !== preg_match( '/^[a-z]{2}$/', $language ) ) {
+			return $url;
+		}
+
+		$parts = explode( '#', $url, 2 );
+
+		return add_query_arg( 'locale', $language, $parts[0] ) . ( isset( $parts[1] ) ? '#' . $parts[1] : '' );
 	}
 
 	/**
