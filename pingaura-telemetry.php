@@ -2,8 +2,8 @@
 /**
  * Plugin Name:       PingAura Telemetry
  * Plugin URI:        https://www.pingaura.ai/docs/ai-traffic/wordpress-setup
- * Description:       See the visits AI assistants send to your site and the AI crawlers that read it, in PingAura.
- * Version:           1.2.0
+ * Description:       See the visits AI assistants send to your site and the AI crawlers that read it, and apply suggested fixes from PingAura AI in wp-admin.
+ * Version:           1.3.0
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            PingAura AI
@@ -17,7 +17,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'PINGAURA_TELEMETRY_VERSION', '1.2.0' );
+define( 'PINGAURA_TELEMETRY_VERSION', '1.3.0' );
 define( 'PINGAURA_TELEMETRY_FILE', __FILE__ );
 
 require_once __DIR__ . '/includes/class-pingaura-telemetry-settings.php';
@@ -25,10 +25,19 @@ require_once __DIR__ . '/includes/class-pingaura-telemetry-client.php';
 require_once __DIR__ . '/includes/class-pingaura-telemetry-tracker.php';
 require_once __DIR__ . '/includes/class-pingaura-telemetry-indexnow.php';
 require_once __DIR__ . '/includes/class-pingaura-telemetry-admin.php';
+require_once __DIR__ . '/includes/class-pingaura-ai-api.php';
+require_once __DIR__ . '/includes/class-pingaura-ai-connect.php';
+require_once __DIR__ . '/includes/class-pingaura-ai-fixes.php';
+require_once __DIR__ . '/includes/class-pingaura-ai-admin.php';
 
 PingAura_Telemetry_Tracker::init();
 PingAura_Telemetry_IndexNow::init();
+PingAura_AI_Connect::init();
+PingAura_AI_Fixes::init();
+
+register_deactivation_hook( __FILE__, array( 'PingAura_AI_Connect', 'on_deactivate' ) );
 
 if ( is_admin() ) {
 	PingAura_Telemetry_Admin::init();
+	PingAura_AI_Admin::init();
 }

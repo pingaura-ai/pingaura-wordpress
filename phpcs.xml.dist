@@ -27,6 +27,9 @@
 				<element value="pingaura_telemetry"/>
 				<element value="PingAura_Telemetry"/>
 				<element value="PINGAURA_TELEMETRY"/>
+				<element value="pingaura_ai"/>
+				<element value="PingAura_AI"/>
+				<element value="PINGAURA_AI"/>
 			</property>
 		</properties>
 	</rule>

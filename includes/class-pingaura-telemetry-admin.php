@@ -8,7 +8,7 @@
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Settings → PingAura Telemetry.
+ * PingAura AI → Settings.
  */
 final class PingAura_Telemetry_Admin {
 
@@ -20,6 +20,7 @@ final class PingAura_Telemetry_Admin {
 	 * Registers hooks.
 	 */
 	public static function init() {
+		add_action( 'admin_menu', array( __CLASS__, 'redirect_old_page' ), 0 );
 		add_action( 'admin_menu', array( __CLASS__, 'add_page' ) );
 		add_action( 'admin_init', array( __CLASS__, 'add_privacy_policy_content' ) );
 		add_action( 'admin_post_pingaura_telemetry_save', array( __CLASS__, 'handle_save' ) );
@@ -30,16 +31,32 @@ final class PingAura_Telemetry_Admin {
 	}
 
 	/**
-	 * Adds the settings page.
+	 * Adds the settings page to the PingAura AI menu.
 	 */
 	public static function add_page() {
-		add_options_page(
+		add_submenu_page(
+			PingAura_AI_Admin::MENU,
 			__( 'PingAura Telemetry', 'pingaura-telemetry' ),
-			__( 'PingAura Telemetry', 'pingaura-telemetry' ),
+			__( 'Settings', 'pingaura-telemetry' ),
 			'manage_options',
 			self::PAGE,
 			array( __CLASS__, 'render' )
 		);
+	}
+
+	/**
+	 * Sends the settings page's old address, under Settings, to its new one.
+	 */
+	public static function redirect_old_page() {
+		global $pagenow;
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Only redirects; nothing is changed.
+		if ( 'options-general.php' !== $pagenow || ! isset( $_GET['page'] ) || self::PAGE !== $_GET['page'] ) {
+			return;
+		}
+
+		wp_safe_redirect( self::page_url() );
+		exit;
 	}
 
 	/**
@@ -430,6 +447,6 @@ final class PingAura_Telemetry_Admin {
 	 * @return string
 	 */
 	private static function page_url() {
-		return admin_url( 'options-general.php?page=' . self::PAGE );
+		return admin_url( 'admin.php?page=' . self::PAGE );
 	}
 }

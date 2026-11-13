@@ -2,6 +2,22 @@
 
 All notable changes to this plugin are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and versions follow [Semantic Versioning](https://semver.org/).
 
+## [1.3.0] - Unreleased
+
+### Added
+
+- PingAura AI menu in wp-admin, for users who can manage options.
+- Connect to PingAura: a browser approval with a one-time state and a PKCE code verifier. PingAura checks the pending state through the `pingaura/v1/connect-check` REST route before linking the site.
+- Dashboard page that shows the PingAura panel in a frame, using a short-lived address requested from PingAura on each visit.
+- Fixes page to preview, apply and undo suggested fixes: JSON-LD in the page head, a served `/llms.txt` and rules appended to the generated `robots.txt`. Undo restores the fix that was applied before, if any.
+- Requests to PingAura are signed with a per-site secret, and the list of fixes is accepted only with a valid response signature.
+- The site disconnects from PingAura when you click Disconnect, deactivate the plugin or delete it.
+- `PINGAURA_AI_APP_URL` constant to point the connection at another PingAura environment.
+
+### Changed
+
+- The settings page moved from Settings to PingAura AI → Settings. The old address redirects.
+
 ## [1.2.0] - Unreleased
 
 ### Added
@@ -42,6 +58,7 @@ All notable changes to this plugin are documented here. The format follows [Keep
 - `pingaura_telemetry_should_track`, `pingaura_telemetry_track_logged_in_users`, `pingaura_telemetry_crawler_pattern` and `pingaura_telemetry_client_ip` filters.
 - Suggested privacy policy text.
 
+[1.3.0]: https://github.com/pingaura-ai/pingaura-wordpress/releases/tag/v1.3.0
 [1.2.0]: https://github.com/pingaura-ai/pingaura-wordpress/releases/tag/v1.2.0
 [1.1.0]: https://github.com/pingaura-ai/pingaura-wordpress/releases/tag/v1.1.0
 [1.0.1]: https://github.com/pingaura-ai/pingaura-wordpress/releases/tag/v1.0.1
