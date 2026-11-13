@@ -1,6 +1,6 @@
-=== PingAura Telemetry ===
+=== PingAura AI: AI Visibility, AI Traffic and Fixes ===
 Contributors: pingauraai
-Tags: ai traffic, chatgpt, analytics, ai crawlers, perplexity
+Tags: ai visibility, ai traffic, chatgpt, ai crawlers, analytics
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
@@ -8,11 +8,11 @@ Stable tag: 1.3.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-See the visits ChatGPT, Perplexity, Gemini and other AI assistants send to your site, and the AI crawlers that read it, in PingAura.
+See how AI assistants like ChatGPT, Gemini and Perplexity mention your brand, track the AI visits and crawlers you get, and apply suggested fixes.
 
 == Description ==
 
-PingAura Telemetry connects a WordPress site to [PingAura](https://www.pingaura.ai), which shows how AI assistants find, read and recommend your content.
+PingAura AI connects a WordPress site to [PingAura](https://www.pingaura.ai), which shows how AI assistants such as ChatGPT, Gemini and Perplexity find, read and recommend your content. The plugin was called PingAura Telemetry before version 1.3.0; its settings carry over.
 
 With the plugin active, the AI Traffic section of PingAura shows:
 
@@ -121,7 +121,7 @@ WordPress serves /llms.txt and the generated /robots.txt through its rewrite rul
 
 = Where did the settings page go? =
 
-It moved from Settings → PingAura Telemetry to PingAura AI → Settings. The old address redirects there.
+It moved from Settings → PingAura Telemetry, the plugin's earlier name, to PingAura AI → Settings. The old address redirects there.
 
 = Does it slow my site down? =
 
@@ -168,9 +168,10 @@ Not for visitors. An administrator who turns on test visits gets a cookie in the
 == Changelog ==
 
 = 1.3.0 =
+* Renamed to PingAura AI. Settings, data and the plugin's folder are unchanged.
 * New PingAura AI menu: connect the site to PingAura and see the PingAura dashboard in wp-admin.
 * Fixes page: preview, apply and undo suggested JSON-LD, llms.txt and robots.txt fixes.
-* Apply uses exactly the content you previewed; if the fix changed in the meantime, you are asked to review it again.
+* Apply uses exactly the fix you previewed, at the place you previewed it; if the fix changed in the meantime, you are asked to review it again.
 * The llms.txt and robots.txt fixes need pretty permalinks.
 * The settings page moved to PingAura AI → Settings. The old address redirects.
 
@@ -190,7 +191,7 @@ Not for visitors. An administrator who turns on test visits gets a cookie in the
 == Upgrade Notice ==
 
 = 1.3.0 =
-Adds an optional PingAura AI menu with a dashboard and one-click fixes. Telemetry settings move to PingAura AI → Settings and keep working without connecting.
+Renamed to PingAura AI. Adds an optional PingAura AI menu with a dashboard and one-click fixes. Telemetry settings move to PingAura AI → Settings and keep working without connecting.
 
 = 1.2.0 =
 Adds optional contact-click tracking. Off until you save a browser key.

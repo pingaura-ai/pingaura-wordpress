@@ -36,7 +36,7 @@ final class PingAura_Telemetry_Admin {
 	public static function add_page() {
 		add_submenu_page(
 			PingAura_AI_Admin::MENU,
-			__( 'PingAura Telemetry', 'pingaura-telemetry' ),
+			__( 'PingAura AI Settings', 'pingaura-telemetry' ),
 			__( 'Settings', 'pingaura-telemetry' ),
 			'manage_options',
 			self::PAGE,
@@ -68,7 +68,7 @@ final class PingAura_Telemetry_Admin {
 		}
 
 		wp_add_privacy_policy_content(
-			__( 'PingAura Telemetry', 'pingaura-telemetry' ),
+			__( 'PingAura AI', 'pingaura-telemetry' ),
 			wp_kses_post(
 				wpautop(
 					__( 'When you visit this site, we send the address of the page you viewed (without query parameters other than utm_ campaign tags), its title, the address of the page that referred you, your IP address and your browser\'s user agent to PingAura, an analytics service, to measure visits from AI assistants. Your IP address is used to determine your country. No cookies are set. If contact-click tracking is on, a script loaded from PingAura records when you click a phone, email or WhatsApp link on this site, with the page and the site or AI assistant that brought you here, but not the number, address or message. It keeps that source in your browser\'s local storage for 30 minutes. See PingAura\'s privacy policy: https://www.pingaura.ai/privacy-policy', 'pingaura-telemetry' )
@@ -225,7 +225,7 @@ final class PingAura_Telemetry_Admin {
 		delete_transient( self::notice_key() );
 		?>
 		<div class="wrap">
-			<h1><?php esc_html_e( 'PingAura Telemetry', 'pingaura-telemetry' ); ?></h1>
+			<h1><?php esc_html_e( 'PingAura AI Settings', 'pingaura-telemetry' ); ?></h1>
 
 			<?php if ( $notice ) : ?>
 				<div class="notice notice-info is-dismissible"><p><?php echo esc_html( $notice ); ?></p></div>

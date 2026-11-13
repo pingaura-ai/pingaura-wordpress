@@ -191,13 +191,13 @@ final class PingAura_AI_Admin {
 	/**
 	 * Applies a fix. Its content is fetched again from PingAura, with the
 	 * signature checked, instead of being taken from the form. The form carries
-	 * the SHA-256 of the content the admin previewed, and the fix is applied
-	 * only if the fresh content still matches it.
+	 * a SHA-256 over the kind, target path and content the admin previewed, and
+	 * the fix is applied only if the fresh fix still matches all three.
 	 */
 	public static function handle_apply() {
 		self::require_capability();
 		$fix_id = self::posted_fix_id();
-		$sha256 = self::posted_content_sha256();
+		$sha256 = self::posted_fix_sha256();
 		check_admin_referer( 'pingaura_ai_apply_' . $fix_id . '_' . $sha256 );
 
 		$fixes = self::fetch_fixes();
@@ -215,7 +215,7 @@ final class PingAura_AI_Admin {
 		if ( null === $fix ) {
 			self::redirect( self::fixes_url(), __( 'PingAura no longer proposes this fix.', 'pingaura-telemetry' ), 'error' );
 		}
-		if ( ! hash_equals( hash( 'sha256', $fix['content'] ), $sha256 ) ) {
+		if ( ! hash_equals( self::fix_sha256( $fix ), $sha256 ) ) {
 			self::redirect( self::fixes_url(), __( 'This fix changed since you previewed it. Review it again.', 'pingaura-telemetry' ), 'warning' );
 		}
 
@@ -405,7 +405,7 @@ final class PingAura_AI_Admin {
 									if ( null !== $live ) {
 										self::action_form( 'undo', $fix['id'], __( 'Undo', 'pingaura-telemetry' ) );
 									} elseif ( '' === $blocker ) {
-										self::action_form( 'apply', $fix['id'], __( 'Apply', 'pingaura-telemetry' ), hash( 'sha256', $fix['content'] ) );
+										self::action_form( 'apply', $fix['id'], __( 'Apply', 'pingaura-telemetry' ), self::fix_sha256( $fix ) );
 									}
 									?>
 								</td>
@@ -483,7 +483,7 @@ final class PingAura_AI_Admin {
 	 * @param string $action apply or undo.
 	 * @param string $fix_id Fix ID.
 	 * @param string $label  Button label.
-	 * @param string $sha256 For apply: hex SHA-256 of the previewed content.
+	 * @param string $sha256 For apply: fix_sha256() of the previewed fix.
 	 */
 	private static function action_form( $action, $fix_id, $label, $sha256 = '' ) {
 		$nonce_action = 'pingaura_ai_' . $action . '_' . $fix_id . ( '' !== $sha256 ? '_' . $sha256 : '' );
@@ -493,7 +493,7 @@ final class PingAura_AI_Admin {
 			<input type="hidden" name="action" value="<?php echo esc_attr( 'pingaura_ai_' . $action ); ?>">
 			<input type="hidden" name="fix_id" value="<?php echo esc_attr( $fix_id ); ?>">
 			<?php if ( '' !== $sha256 ) : ?>
-				<input type="hidden" name="content_sha256" value="<?php echo esc_attr( $sha256 ); ?>">
+				<input type="hidden" name="fix_sha256" value="<?php echo esc_attr( $sha256 ); ?>">
 			<?php endif; ?>
 			<button class="button<?php echo 'apply' === $action ? ' button-primary' : ''; ?>"><?php echo esc_html( $label ); ?></button>
 		</form>
@@ -563,13 +563,24 @@ final class PingAura_AI_Admin {
 	}
 
 	/**
-	 * The SHA-256 of the previewed content from the submitted Apply form.
+	 * The checksum Apply binds to: hex SHA-256 of "{kind}\n{target_path}\n{content}",
+	 * so a fix cannot be moved to another kind or path after it was previewed.
+	 *
+	 * @param array $fix Validated fix.
+	 * @return string
+	 */
+	private static function fix_sha256( array $fix ) {
+		return hash( 'sha256', $fix['kind'] . "\n" . $fix['target_path'] . "\n" . $fix['content'] );
+	}
+
+	/**
+	 * The checksum of the previewed fix from the submitted Apply form.
 	 *
 	 * @return string
 	 */
-	private static function posted_content_sha256() {
+	private static function posted_fix_sha256() {
 		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- The nonce includes the checksum and is checked right after.
-		$sha256 = isset( $_POST['content_sha256'] ) ? strtolower( sanitize_text_field( wp_unslash( $_POST['content_sha256'] ) ) ) : '';
+		$sha256 = isset( $_POST['fix_sha256'] ) ? strtolower( sanitize_text_field( wp_unslash( $_POST['fix_sha256'] ) ) ) : '';
 		if ( 1 !== preg_match( '/^[0-9a-f]{64}$/', $sha256 ) ) {
 			self::redirect( self::fixes_url(), __( 'This fix changed since you previewed it. Review it again.', 'pingaura-telemetry' ), 'warning' );
 		}

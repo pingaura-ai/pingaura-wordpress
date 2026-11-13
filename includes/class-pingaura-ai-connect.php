@@ -135,7 +135,7 @@ final class PingAura_AI_Connect {
 		$pending = self::pending();
 
 		if ( null === $pending || '' === $state || ! hash_equals( $pending['state'], $state ) || get_current_user_id() !== $pending['user'] ) {
-			return new WP_Error( 'pingaura_ai_state', __( 'This connect link has expired or was started elsewhere. Click Connect to PingAura to try again.', 'pingaura-telemetry' ) );
+			return new WP_Error( 'pingaura_ai_state', __( 'This connection request expired after 15 minutes, or was started in another browser or by another user. Click Connect to PingAura again.', 'pingaura-telemetry' ) );
 		}
 
 		delete_transient( self::TRANSIENT );
@@ -146,6 +146,11 @@ final class PingAura_AI_Connect {
 
 		$data = PingAura_AI_Api::exchange_code( $code, $pending['verifier'] );
 		if ( is_wp_error( $data ) ) {
+			$error = $data->get_error_data();
+			if ( is_array( $error ) && isset( $error['error'] ) && 'ownership_failed' === $error['error'] ) {
+				// PingAura could not confirm the request with this site, usually because it expired.
+				return new WP_Error( 'pingaura_ai_state', __( 'PingAura could not confirm this connection request with your site, usually because it expired after 15 minutes. Click Connect to PingAura again.', 'pingaura-telemetry' ) );
+			}
 			return $data;
 		}
 		if ( ! PingAura_AI_Api::save_connection( $data ) ) {

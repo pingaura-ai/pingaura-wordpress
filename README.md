@@ -1,6 +1,8 @@
-# PingAura Telemetry for WordPress
+# PingAura AI for WordPress
 
-See the visits ChatGPT, Perplexity, Gemini and other AI assistants send to your WordPress site, and the AI crawlers that read it, in [PingAura](https://www.pingaura.ai).
+See how AI assistants such as ChatGPT, Gemini and Perplexity mention your brand, track the visits they send to your WordPress site and the AI crawlers that read it, and apply the fixes [PingAura](https://www.pingaura.ai) suggests.
+
+The plugin was called PingAura Telemetry before version 1.3.0. Its slug, folder (`pingaura-telemetry`), text domain and settings are unchanged.
 
 For Next.js, Node.js and Cloudflare Workers, use [`@pingaura/telemetry`](https://github.com/pingaura-ai/pingaura-telemetry-sdk) instead.
 
@@ -29,7 +31,7 @@ Save a browser key (PingAura: Settings, API & MCP, Create key, Browser) in the *
 The **PingAura AI** menu (administrators only) holds a Dashboard, a Fixes page and the telemetry Settings.
 
 - **Connect.** Clicking *Connect to PingAura* stores a random state and a PKCE verifier in a 15-minute transient and opens `https://www.pingaura.ai/wordpress/connect`. PingAura calls `GET /wp-json/pingaura/v1/connect-check?state=…` on the site, which answers `{state, code_challenge}` only for the pending state and 404 otherwise. After approval the browser returns with a one-time code, which the site exchanges with the verifier at `/api/wordpress/connect/token` for a site ID and site secret (stored in options that are not autoloaded).
-- **Signed requests.** Requests to the app carry `X-PingAura-Site`, `X-PingAura-Timestamp` and `X-PingAura-Signature`, the hex HMAC-SHA256 of `{timestamp}\n{METHOD}\n{path}\n{sha256(body)}` with the site secret. The list of fixes is used only if its `X-PingAura-Signature` (HMAC of `{timestamp}\n{body}`) checks out.
+- **Signed requests.** Requests to the app carry `X-PingAura-Site`, `X-PingAura-Timestamp` and `X-PingAura-Signature`, the hex HMAC-SHA256 of `{timestamp}\n{METHOD}\n{path}\n{sha256(body)}` with the site secret. The timestamp increases with every request; if the app still answers `409 {"error":"replayed"}`, the request is signed again with a later timestamp and sent once more. The list of fixes is used only if its `X-PingAura-Signature` (HMAC of `{timestamp}\n{body}`) checks out.
 - **Dashboard.** Each visit requests a one-hour panel address from `/api/wordpress/panel-session` and shows it in a frame. No long-lived secret reaches the browser.
 - **Fixes.** JSON-LD is printed in `wp_head` on its target path, `llms.txt` is served at `/llms.txt` when no file exists on disk, and robots.txt rules are appended through the `robots_txt` filter after the site's own rules (never while the site discourages indexing). Applied fixes live in the `pingaura_ai_fixes` option; Undo restores what the slot held before.
 - **Disconnect** happens on the button, on deactivation (without waiting) and on deletion.

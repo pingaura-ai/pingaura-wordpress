@@ -303,7 +303,9 @@ final class PingAura_AI_Api {
 	 * where path includes the query string and an empty body hashes the empty string.
 	 * The timestamp is strictly increasing per site, so two identical requests in
 	 * the same second still carry different signatures and neither is refused as
-	 * a replay.
+	 * a replay. If PingAura still answers 409 "replayed", the request is signed
+	 * again with a later timestamp and sent once more; a second 409 is returned
+	 * as it is.
 	 *
 	 * @param string     $method HTTP method.
 	 * @param string     $path   Path on the app, starting with a slash.
@@ -324,6 +326,29 @@ final class PingAura_AI_Api {
 			return new WP_Error( 'pingaura_ai_encode', __( 'Could not encode the request.', 'pingaura-telemetry' ) );
 		}
 
+		$response = self::send_signed( $method, $path, $payload, $args, $secret, $site_id );
+
+		// PingAura answers 409 "replayed" when it has already seen this timestamp, for
+		// example after the stored timestamp was lost. Try once more with a later one.
+		if ( ! is_wp_error( $response ) && 409 === (int) wp_remote_retrieve_response_code( $response ) && self::is_replayed( $response ) ) {
+			$response = self::send_signed( $method, $path, $payload, $args, $secret, $site_id );
+		}
+
+		return $response;
+	}
+
+	/**
+	 * Signs and sends one request, with a timestamp later than any sent before.
+	 *
+	 * @param string $method  HTTP method, upper case.
+	 * @param string $path    Path on the app.
+	 * @param string $payload JSON body, or an empty string.
+	 * @param array  $args    Extra arguments for wp_remote_request().
+	 * @param string $secret  Site secret.
+	 * @param string $site_id Site ID.
+	 * @return array|WP_Error
+	 */
+	private static function send_signed( $method, $path, $payload, array $args, $secret, $site_id ) {
 		$last = (int) get_option( self::OPTION_LAST_TS, 0 );
 		if ( $last > time() + 60 ) {
 			// The clock was moved back; start again from now rather than run ahead of it.
@@ -358,6 +383,17 @@ final class PingAura_AI_Api {
 		}
 
 		return wp_remote_request( self::app_url() . $path, $request );
+	}
+
+	/**
+	 * Whether a response is PingAura refusing a request as a replay.
+	 *
+	 * @param array $response Response from wp_remote_request().
+	 * @return bool
+	 */
+	private static function is_replayed( $response ) {
+		$data = json_decode( wp_remote_retrieve_body( $response ), true );
+		return is_array( $data ) && isset( $data['error'] ) && 'replayed' === $data['error'];
 	}
 
 	/**
@@ -413,7 +449,10 @@ final class PingAura_AI_Api {
 					__( 'PingAura replied: %s', 'pingaura-telemetry' ),
 					trim( $code . ' ' . $error )
 				),
-				array( 'status' => $code )
+				array(
+					'status' => $code,
+					'error'  => $error,
+				)
 			);
 		}
 

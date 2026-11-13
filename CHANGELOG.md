@@ -11,15 +11,17 @@ All notable changes to this plugin are documented here. The format follows [Keep
 - Dashboard page that shows the PingAura panel in a frame, using a short-lived address requested from PingAura on each visit.
 - Fixes page to preview, apply and undo suggested fixes: JSON-LD in the page head, a served `/llms.txt` and rules appended to the generated `robots.txt`. Undo restores the fix that was applied before, if any.
 - Requests to PingAura are signed with a per-site secret, and the list of fixes is accepted only with a valid response signature.
+- A request PingAura refuses as a replay (HTTP 409) is signed again with a later timestamp and sent once more.
 - The site disconnects from PingAura when you click Disconnect, deactivate the plugin or delete it.
 - `PINGAURA_AI_APP_URL` constant to point the connection at another PingAura environment.
-- Apply uses exactly the content you previewed. If PingAura changed the fix in the meantime, nothing is applied and you are asked to review it again.
+- Apply uses exactly the fix you previewed: its kind, target path and content. If PingAura changed any of them in the meantime, nothing is applied and you are asked to review it again.
 - The llms.txt and robots.txt fixes need pretty permalinks (Settings → Permalinks). With plain permalinks they are shown but cannot be applied.
 - JSON-LD is not added to addresses with a query string, such as `?p=5`, other than tracking parameters such as `utm_` tags, `gclid` and `fbclid`.
 - Reload button on the PingAura AI page, to open a fresh panel session after the panel times out.
 
 ### Changed
 
+- Renamed to PingAura AI. The slug, folder, text domain and option names stay `pingaura-telemetry`, so existing settings carry over.
 - The settings page moved from Settings to PingAura AI → Settings. The old address redirects.
 
 ## [1.2.0] - 2026-11-02

@@ -1,8 +1,8 @@
 <?php
 /**
- * Plugin Name:       PingAura Telemetry
+ * Plugin Name:       PingAura AI: AI Visibility, AI Traffic and Fixes
  * Plugin URI:        https://www.pingaura.ai/docs/ai-traffic/wordpress-setup
- * Description:       See the visits AI assistants send to your site and the AI crawlers that read it, and apply suggested fixes from PingAura AI in wp-admin.
+ * Description:       See how AI assistants like ChatGPT, Gemini and Perplexity mention your brand, track the AI visits and crawlers you get, and apply suggested fixes.
  * Version:           1.3.0
  * Requires at least: 6.0
  * Requires PHP:      7.4
