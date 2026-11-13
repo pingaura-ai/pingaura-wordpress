@@ -123,6 +123,7 @@ final class PingAura_AI_Admin {
 			self::STYLE_HANDLE,
 			'.pingaura-ai-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:8px 0}'
 			. '.pingaura-ai-bar form{margin:0}'
+			. '.pingaura-ai-actions{display:flex;align-items:center;gap:8px}'
 			. '.pingaura-ai-frame{display:block;width:100%;height:calc(100vh - 140px);min-height:560px;border:1px solid #dcdcde;background:#fff}'
 			. '.pingaura-ai-fixes pre{max-height:320px;overflow:auto;white-space:pre-wrap;word-break:break-word;background:#f6f7f7;padding:8px}'
 			. '.pingaura-ai-fixes td form{display:inline-block;margin:0 4px 4px 0}'
@@ -189,12 +190,15 @@ final class PingAura_AI_Admin {
 
 	/**
 	 * Applies a fix. Its content is fetched again from PingAura, with the
-	 * signature checked, instead of being taken from the form.
+	 * signature checked, instead of being taken from the form. The form carries
+	 * the SHA-256 of the content the admin previewed, and the fix is applied
+	 * only if the fresh content still matches it.
 	 */
 	public static function handle_apply() {
 		self::require_capability();
 		$fix_id = self::posted_fix_id();
-		check_admin_referer( 'pingaura_ai_apply_' . $fix_id );
+		$sha256 = self::posted_content_sha256();
+		check_admin_referer( 'pingaura_ai_apply_' . $fix_id . '_' . $sha256 );
 
 		$fixes = self::fetch_fixes();
 		if ( is_wp_error( $fixes ) ) {
@@ -210,6 +214,9 @@ final class PingAura_AI_Admin {
 		}
 		if ( null === $fix ) {
 			self::redirect( self::fixes_url(), __( 'PingAura no longer proposes this fix.', 'pingaura-telemetry' ), 'error' );
+		}
+		if ( ! hash_equals( hash( 'sha256', $fix['content'] ), $sha256 ) ) {
+			self::redirect( self::fixes_url(), __( 'This fix changed since you previewed it. Review it again.', 'pingaura-telemetry' ), 'warning' );
 		}
 
 		$result = PingAura_AI_Fixes::apply( $fix );
@@ -310,7 +317,10 @@ final class PingAura_AI_Admin {
 						?>
 						<a href="<?php echo esc_url( self::fixes_url() ); ?>"><?php esc_html_e( 'Apply fixes', 'pingaura-telemetry' ); ?></a>
 					</span>
-					<?php self::disconnect_form(); ?>
+					<span class="pingaura-ai-actions">
+						<a class="button" href="<?php echo esc_url( self::panel_url() ); ?>"><?php esc_html_e( 'Reload', 'pingaura-telemetry' ); ?></a>
+						<?php self::disconnect_form(); ?>
+					</span>
 				</div>
 				<?php if ( is_wp_error( $url ) ) : ?>
 					<div class="notice notice-error"><p><?php echo esc_html( $url->get_error_message() ); ?></p></div>
@@ -395,7 +405,7 @@ final class PingAura_AI_Admin {
 									if ( null !== $live ) {
 										self::action_form( 'undo', $fix['id'], __( 'Undo', 'pingaura-telemetry' ) );
 									} elseif ( '' === $blocker ) {
-										self::action_form( 'apply', $fix['id'], __( 'Apply', 'pingaura-telemetry' ) );
+										self::action_form( 'apply', $fix['id'], __( 'Apply', 'pingaura-telemetry' ), hash( 'sha256', $fix['content'] ) );
 									}
 									?>
 								</td>
@@ -473,13 +483,18 @@ final class PingAura_AI_Admin {
 	 * @param string $action apply or undo.
 	 * @param string $fix_id Fix ID.
 	 * @param string $label  Button label.
+	 * @param string $sha256 For apply: hex SHA-256 of the previewed content.
 	 */
-	private static function action_form( $action, $fix_id, $label ) {
+	private static function action_form( $action, $fix_id, $label, $sha256 = '' ) {
+		$nonce_action = 'pingaura_ai_' . $action . '_' . $fix_id . ( '' !== $sha256 ? '_' . $sha256 : '' );
 		?>
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-			<?php wp_nonce_field( 'pingaura_ai_' . $action . '_' . $fix_id ); ?>
+			<?php wp_nonce_field( $nonce_action ); ?>
 			<input type="hidden" name="action" value="<?php echo esc_attr( 'pingaura_ai_' . $action ); ?>">
 			<input type="hidden" name="fix_id" value="<?php echo esc_attr( $fix_id ); ?>">
+			<?php if ( '' !== $sha256 ) : ?>
+				<input type="hidden" name="content_sha256" value="<?php echo esc_attr( $sha256 ); ?>">
+			<?php endif; ?>
 			<button class="button<?php echo 'apply' === $action ? ' button-primary' : ''; ?>"><?php echo esc_html( $label ); ?></button>
 		</form>
 		<?php
@@ -545,6 +560,20 @@ final class PingAura_AI_Admin {
 			wp_die( esc_html__( 'Unknown fix.', 'pingaura-telemetry' ), 400 );
 		}
 		return $fix_id;
+	}
+
+	/**
+	 * The SHA-256 of the previewed content from the submitted Apply form.
+	 *
+	 * @return string
+	 */
+	private static function posted_content_sha256() {
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- The nonce includes the checksum and is checked right after.
+		$sha256 = isset( $_POST['content_sha256'] ) ? strtolower( sanitize_text_field( wp_unslash( $_POST['content_sha256'] ) ) ) : '';
+		if ( 1 !== preg_match( '/^[0-9a-f]{64}$/', $sha256 ) ) {
+			self::redirect( self::fixes_url(), __( 'This fix changed since you previewed it. Review it again.', 'pingaura-telemetry' ), 'warning' );
+		}
+		return $sha256;
 	}
 
 	/**

@@ -115,6 +115,10 @@ No. Telemetry, contact clicks and IndexNow work with only the settings page. Con
 
 They stay in place, and you can still undo them under PingAura AI → Fixes. Deactivating the plugin turns them off; deleting it removes them.
 
+= Why can I not apply the llms.txt or robots.txt fix? =
+
+WordPress serves /llms.txt and the generated /robots.txt through its rewrite rules, which exist only with pretty permalinks. If Settings → Permalinks is set to Plain, turn on any other structure and the Apply button appears. These fixes also cannot be applied when a real llms.txt or robots.txt file is on the server, because the server sends that file instead.
+
 = Where did the settings page go? =
 
 It moved from Settings → PingAura Telemetry to PingAura AI → Settings. The old address redirects there.
@@ -166,6 +170,8 @@ Not for visitors. An administrator who turns on test visits gets a cookie in the
 = 1.3.0 =
 * New PingAura AI menu: connect the site to PingAura and see the PingAura dashboard in wp-admin.
 * Fixes page: preview, apply and undo suggested JSON-LD, llms.txt and robots.txt fixes.
+* Apply uses exactly the content you previewed; if the fix changed in the meantime, you are asked to review it again.
+* The llms.txt and robots.txt fixes need pretty permalinks.
 * The settings page moved to PingAura AI → Settings. The old address redirects.
 
 = 1.2.0 =

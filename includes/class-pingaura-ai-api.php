@@ -24,6 +24,8 @@ final class PingAura_AI_Api {
 
 	const OPTION_SITE = 'pingaura_ai_site';
 
+	const OPTION_LAST_TS = 'pingaura_ai_last_ts';
+
 	const TIMEOUT_SECONDS = 10;
 
 	const MAX_CLOCK_SKEW = 300;
@@ -130,6 +132,7 @@ final class PingAura_AI_Api {
 		delete_option( self::OPTION_SITE_ID );
 		delete_option( self::OPTION_SECRET );
 		delete_option( self::OPTION_SITE );
+		delete_option( self::OPTION_LAST_TS );
 	}
 
 	/**
@@ -248,14 +251,20 @@ final class PingAura_AI_Api {
 	}
 
 	/**
-	 * Tells PingAura a fix was undone.
+	 * Tells PingAura a fix was undone. A 404 counts as done: PingAura no longer
+	 * knows the fix, for example after the site reconnected.
 	 *
 	 * @param string $fix_id Fix ID.
 	 * @return bool
 	 */
 	public static function report_reverted( $fix_id ) {
 		$response = self::request( 'POST', '/api/wordpress/fixes/' . rawurlencode( $fix_id ) . '/reverted', new stdClass() );
-		return ! is_wp_error( self::decode( $response ) );
+		$data     = self::decode( $response );
+		if ( ! is_wp_error( $data ) ) {
+			return true;
+		}
+		$error = $data->get_error_data();
+		return is_array( $error ) && isset( $error['status'] ) && 404 === $error['status'];
 	}
 
 	/**
@@ -287,6 +296,9 @@ final class PingAura_AI_Api {
 	 *
 	 * The signature is hex(HMAC-SHA256(site_secret, "{timestamp}\n{METHOD}\n{path}\n{hex(sha256(body))}")),
 	 * where path includes the query string and an empty body hashes the empty string.
+	 * The timestamp is strictly increasing per site, so two identical requests in
+	 * the same second still carry different signatures and neither is refused as
+	 * a replay.
 	 *
 	 * @param string     $method HTTP method.
 	 * @param string     $path   Path on the app, starting with a slash.
@@ -307,7 +319,14 @@ final class PingAura_AI_Api {
 			return new WP_Error( 'pingaura_ai_encode', __( 'Could not encode the request.', 'pingaura-telemetry' ) );
 		}
 
-		$timestamp = (string) time();
+		$last = (int) get_option( self::OPTION_LAST_TS, 0 );
+		if ( $last > time() + 60 ) {
+			// The clock was moved back; start again from now rather than run ahead of it.
+			$last = 0;
+		}
+		$ts        = max( time(), $last + 1 );
+		$timestamp = (string) $ts;
+		update_option( self::OPTION_LAST_TS, $ts, false );
 		$signature = hash_hmac( 'sha256', $timestamp . "\n" . $method . "\n" . $path . "\n" . hash( 'sha256', $payload ), $secret );
 
 		$headers = array(

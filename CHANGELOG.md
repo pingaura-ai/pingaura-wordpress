@@ -13,6 +13,10 @@ All notable changes to this plugin are documented here. The format follows [Keep
 - Requests to PingAura are signed with a per-site secret, and the list of fixes is accepted only with a valid response signature.
 - The site disconnects from PingAura when you click Disconnect, deactivate the plugin or delete it.
 - `PINGAURA_AI_APP_URL` constant to point the connection at another PingAura environment.
+- Apply uses exactly the content you previewed. If PingAura changed the fix in the meantime, nothing is applied and you are asked to review it again.
+- The llms.txt and robots.txt fixes need pretty permalinks (Settings → Permalinks). With plain permalinks they are shown but cannot be applied.
+- JSON-LD is not added to addresses with a query string, such as `?p=5`, other than tracking parameters such as `utm_` tags, `gclid` and `fbclid`.
+- Reload button on the PingAura AI page, to open a fresh panel session after the panel times out.
 
 ### Changed
 

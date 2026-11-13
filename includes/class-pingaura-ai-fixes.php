@@ -38,6 +38,12 @@ final class PingAura_AI_Fixes {
 	const MAX_HISTORY = 5;
 
 	/**
+	 * Query parameters that only track a visit and do not change the page.
+	 * Parameters starting with utm_ are ignored too.
+	 */
+	const IGNORED_QUERY_PARAMS = array( 'gclid', 'gbraid', 'wbraid', 'dclid', 'fbclid', 'msclkid', 'twclid', 'ttclid', 'li_fat_id', 'mc_cid', 'mc_eid', '_ga', '_gl', 'srsltid' );
+
+	/**
 	 * Registers hooks.
 	 */
 	public static function init() {
@@ -121,6 +127,9 @@ final class PingAura_AI_Fixes {
 		}
 		if ( 'robots_txt' === $kind && file_exists( self::home_dir() . 'robots.txt' ) ) {
 			return __( 'Your site has a robots.txt file on the server, so WordPress does not generate one. Add these lines to that file by hand.', 'pingaura-telemetry' );
+		}
+		if ( in_array( $kind, array( 'llms_txt', 'robots_txt' ), true ) && '' === get_option( 'permalink_structure' ) ) {
+			return __( 'Turn on pretty permalinks in Settings > Permalinks so WordPress can serve this file.', 'pingaura-telemetry' );
 		}
 		if ( 'robots_txt' === $kind && '0' === (string) get_option( 'blog_public' ) ) {
 			return __( 'Search engines are discouraged from indexing this site (Settings, Reading), so robots.txt rules are not added.', 'pingaura-telemetry' );
@@ -209,10 +218,14 @@ final class PingAura_AI_Fixes {
 	/**
 	 * Prints applied JSON-LD for the current path. The stored text is decoded
 	 * and encoded again, so it can never close the script tag.
+	 *
+	 * Nothing is printed when the address has a query string other than
+	 * tracking parameters, because ?p=5 or ?page_id=2 can show a different page
+	 * on the same path.
 	 */
 	public static function print_jsonld() {
 		$path = self::request_path();
-		if ( null === $path ) {
+		if ( null === $path || self::request_has_query() ) {
 			return;
 		}
 
@@ -285,7 +298,7 @@ final class PingAura_AI_Fixes {
 
 	/**
 	 * Whether content suits its kind: JSON-LD must decode to a JSON object and
-	 * a robots.txt block may hold only rules and comments.
+	 * a robots.txt block may hold only User-agent and Allow rules and comments.
 	 *
 	 * @param string $kind    Fix kind.
 	 * @param string $content Content.
@@ -302,7 +315,9 @@ final class PingAura_AI_Fixes {
 	}
 
 	/**
-	 * Whether every line is a robots.txt directive, a comment or blank.
+	 * Whether every line is a User-agent or Allow rule, a comment or blank.
+	 * PingAura only sends rules that let crawlers in, so Disallow and other
+	 * directives are refused.
 	 *
 	 * @param string $content Rules block.
 	 * @return bool
@@ -312,7 +327,7 @@ final class PingAura_AI_Fixes {
 			return false;
 		}
 		foreach ( explode( "\n", str_replace( "\r\n", "\n", $content ) ) as $line ) {
-			if ( 1 !== preg_match( '/^\s*(#[^\x00-\x08\x0B-\x1F\x7F]*|(user-agent|allow|disallow|sitemap|crawl-delay)\s*:[^\x00-\x1F\x7F]*)?\s*$/i', $line ) ) {
+			if ( 1 !== preg_match( '/^\s*(#[^\x00-\x08\x0B-\x1F\x7F]*|(user-agent|allow)\s*:[^\x00-\x1F\x7F]*)?\s*$/i', $line ) ) {
 				return false;
 			}
 		}
@@ -376,6 +391,34 @@ final class PingAura_AI_Fixes {
 		}
 		$path = wp_parse_url( esc_url_raw( wp_unslash( $_SERVER['REQUEST_URI'] ) ), PHP_URL_PATH );
 		return is_string( $path ) ? self::normalize_path( $path ) : null;
+	}
+
+	/**
+	 * Whether the current request has query parameters other than tracking ones.
+	 *
+	 * @return bool
+	 */
+	private static function request_has_query() {
+		if ( ! isset( $_SERVER['REQUEST_URI'] ) ) {
+			return false;
+		}
+		$query = wp_parse_url( esc_url_raw( wp_unslash( $_SERVER['REQUEST_URI'] ) ), PHP_URL_QUERY );
+		if ( ! is_string( $query ) || '' === $query ) {
+			return false;
+		}
+
+		foreach ( explode( '&', $query ) as $pair ) {
+			if ( '' === $pair ) {
+				continue;
+			}
+			$parts = explode( '=', $pair, 2 );
+			$name  = strtolower( rawurldecode( $parts[0] ) );
+			if ( 0 === strpos( $name, 'utm_' ) || in_array( $name, self::IGNORED_QUERY_PARAMS, true ) ) {
+				continue;
+			}
+			return true;
+		}
+		return false;
 	}
 
 	/**
