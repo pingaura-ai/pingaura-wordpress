@@ -28,12 +28,14 @@ require_once __DIR__ . '/includes/class-pingaura-telemetry-admin.php';
 require_once __DIR__ . '/includes/class-pingaura-ai-api.php';
 require_once __DIR__ . '/includes/class-pingaura-ai-connect.php';
 require_once __DIR__ . '/includes/class-pingaura-ai-fixes.php';
+require_once __DIR__ . '/includes/class-pingaura-ai-pages.php';
 require_once __DIR__ . '/includes/class-pingaura-ai-admin.php';
 
 PingAura_Telemetry_Tracker::init();
 PingAura_Telemetry_IndexNow::init();
 PingAura_AI_Connect::init();
 PingAura_AI_Fixes::init();
+PingAura_AI_Pages::init();
 
 register_deactivation_hook( __FILE__, array( 'PingAura_AI_Connect', 'on_deactivate' ) );
 

@@ -316,6 +316,7 @@ final class PingAura_AI_Admin {
 						}
 						?>
 						<a href="<?php echo esc_url( self::fixes_url() ); ?>"><?php esc_html_e( 'Apply fixes', 'pingaura-telemetry' ); ?></a>
+						<?php self::pages_sent_line(); ?>
 					</span>
 					<span class="pingaura-ai-actions">
 						<a class="button" href="<?php echo esc_url( self::panel_url() ); ?>"><?php esc_html_e( 'Reload', 'pingaura-telemetry' ); ?></a>
@@ -341,9 +342,10 @@ final class PingAura_AI_Admin {
 			return;
 		}
 
-		$connected = PingAura_AI_Api::is_connected();
-		$fixes     = $connected ? self::fetch_fixes() : array();
-		$listed    = array();
+		$connected    = PingAura_AI_Api::is_connected();
+		$empty_reason = '';
+		$fixes        = $connected ? self::fetch_fixes( $empty_reason ) : array();
+		$listed       = array();
 		?>
 		<div class="wrap pingaura-ai-fixes">
 			<h1><?php esc_html_e( 'Fixes', 'pingaura-telemetry' ); ?></h1>
@@ -363,7 +365,7 @@ final class PingAura_AI_Admin {
 				</p>
 			<?php elseif ( is_wp_error( $fixes ) ) : ?>
 				<div class="notice notice-error"><p><?php echo esc_html( $fixes->get_error_message() ); ?></p></div>
-			<?php elseif ( empty( $fixes ) ) : ?>
+			<?php elseif ( empty( $fixes ) && ! self::empty_reason_notice( $empty_reason ) ) : ?>
 				<p><?php esc_html_e( 'No fixes to suggest right now.', 'pingaura-telemetry' ); ?></p>
 			<?php endif; ?>
 
@@ -467,14 +469,67 @@ final class PingAura_AI_Admin {
 	/**
 	 * Fetches and validates the proposed fixes.
 	 *
+	 * @param string $empty_reason Set to why the list is empty, or an empty string.
 	 * @return array[]|WP_Error
 	 */
-	private static function fetch_fixes() {
-		$raw = PingAura_AI_Api::fixes();
+	private static function fetch_fixes( &$empty_reason = '' ) {
+		$empty_reason = '';
+		$raw          = PingAura_AI_Api::fixes();
 		if ( is_wp_error( $raw ) ) {
 			return $raw;
 		}
-		return array_values( array_filter( array_map( array( 'PingAura_AI_Fixes', 'validate' ), $raw ) ) );
+		$empty_reason = $raw['empty_reason'];
+		return array_values( array_filter( array_map( array( 'PingAura_AI_Fixes', 'validate' ), $raw['fixes'] ) ) );
+	}
+
+	/**
+	 * Prints why PingAura has no fixes to suggest, when it says so.
+	 *
+	 * @param string $reason no_audit, audit_running, site_unreachable or none_needed.
+	 * @return bool Whether a notice was printed.
+	 */
+	private static function empty_reason_notice( $reason ) {
+		$messages = array(
+			'no_audit'         => __( 'PingAura has not audited this site yet. Run a site audit from the PingAura dashboard, then check back.', 'pingaura-telemetry' ),
+			'audit_running'    => __( 'A site audit is running. Fixes appear here when it finishes.', 'pingaura-telemetry' ),
+			'site_unreachable' => __( 'PingAura could not read this site\'s pages. If the site is in maintenance mode, private or password protected, make it public, then run the audit again.', 'pingaura-telemetry' ),
+			'none_needed'      => __( 'No fixes needed right now: the latest audit found nothing PingAura can fix here.', 'pingaura-telemetry' ),
+		);
+		if ( ! isset( $messages[ $reason ] ) ) {
+			return false;
+		}
+
+		printf(
+			'<div class="notice %1$s inline"><p>%2$s</p></div>',
+			esc_attr( 'site_unreachable' === $reason ? 'notice-warning' : 'notice-info' ),
+			esc_html( $messages[ $reason ] )
+		);
+		return true;
+	}
+
+	/**
+	 * Prints when the page list was last sent to PingAura, if it has been.
+	 */
+	private static function pages_sent_line() {
+		$last = PingAura_AI_Pages::last_sent();
+		if ( null === $last ) {
+			return;
+		}
+
+		$when = wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $last['at'] );
+		?>
+		<br>
+		<span class="description">
+			<?php
+			printf(
+				/* translators: 1: date and time, 2: number of pages. */
+				esc_html( _n( 'Pages last sent to PingAura: %1$s (%2$s page)', 'Pages last sent to PingAura: %1$s (%2$s pages)', $last['pages'], 'pingaura-telemetry' ) ),
+				esc_html( (string) $when ),
+				esc_html( number_format_i18n( $last['pages'] ) )
+			);
+			?>
+		</span>
+		<?php
 	}
 
 	/**

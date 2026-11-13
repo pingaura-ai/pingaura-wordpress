@@ -157,6 +157,9 @@ final class PingAura_AI_Connect {
 			return new WP_Error( 'pingaura_ai_bad_response', __( 'PingAura sent an unexpected response.', 'pingaura-telemetry' ) );
 		}
 
+		// Send the page list from WP-Cron in a few seconds, so the redirect is not held up.
+		PingAura_AI_Pages::on_connected();
+
 		return true;
 	}
 
@@ -169,6 +172,7 @@ final class PingAura_AI_Connect {
 	public static function disconnect( $blocking ) {
 		$confirmed = PingAura_AI_Api::disconnect_remote( $blocking );
 		PingAura_AI_Api::forget_connection();
+		PingAura_AI_Pages::forget();
 		delete_transient( self::TRANSIENT );
 		return $confirmed;
 	}

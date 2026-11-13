@@ -24,6 +24,9 @@ function pingaura_telemetry_uninstall_site() {
 	PingAura_AI_Api::forget_connection();
 	delete_option( 'pingaura_ai_fixes' );
 	delete_transient( 'pingaura_ai_connect' );
+	wp_unschedule_hook( 'pingaura_ai_sync_pages' );
+	delete_option( 'pingaura_ai_pages_status' );
+	delete_transient( 'pingaura_ai_pages_lock' );
 }
 
 if ( is_multisite() ) {

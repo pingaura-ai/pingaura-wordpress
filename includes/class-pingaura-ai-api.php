@@ -30,6 +30,8 @@ final class PingAura_AI_Api {
 
 	const MAX_CLOCK_SKEW = 300;
 
+	const EMPTY_REASONS = array( 'no_audit', 'audit_running', 'site_unreachable', 'none_needed' );
+
 	/**
 	 * The app's origin. PINGAURA_AI_APP_URL in wp-config.php overrides it.
 	 *
@@ -220,7 +222,11 @@ final class PingAura_AI_Api {
 	 * Fetches the fixes PingAura proposes for this site. The response must carry
 	 * a valid signature, or nothing is returned.
 	 *
-	 * @return array[]|WP_Error Raw fixes, not yet validated.
+	 * The empty reason says why the list is empty: no_audit, audit_running,
+	 * site_unreachable or none_needed. It is an empty string when PingAura
+	 * gives none, as older versions of the app do.
+	 *
+	 * @return array{fixes: array[], empty_reason: string}|WP_Error Raw fixes, not yet validated.
 	 */
 	public static function fixes() {
 		$response = self::request( 'GET', '/api/wordpress/fixes' );
@@ -235,7 +241,33 @@ final class PingAura_AI_Api {
 			return new WP_Error( 'pingaura_ai_bad_response', __( 'PingAura sent an unexpected response.', 'pingaura-telemetry' ) );
 		}
 
-		return array_values( array_filter( $data['fixes'], 'is_array' ) );
+		$reason = isset( $data['empty_reason'] ) && in_array( $data['empty_reason'], self::EMPTY_REASONS, true ) ? $data['empty_reason'] : '';
+
+		return array(
+			'fixes'        => array_values( array_filter( $data['fixes'], 'is_array' ) ),
+			'empty_reason' => $reason,
+		);
+	}
+
+	/**
+	 * Sends part of the site's page list.
+	 *
+	 * @param array[] $pages    Entries with url, title and type, at most 100.
+	 * @param array   $state    blog_public and maintenance flags.
+	 * @param bool    $complete Whether this is the last part of the sync.
+	 * @return array|WP_Error Counts from PingAura, or an error whose data holds the HTTP status.
+	 */
+	public static function send_pages( array $pages, array $state, $complete ) {
+		$body = array(
+			'pages'    => array_values( $pages ),
+			'state'    => array(
+				'blog_public' => ! empty( $state['blog_public'] ),
+				'maintenance' => ! empty( $state['maintenance'] ),
+			),
+			'complete' => (bool) $complete,
+		);
+
+		return self::decode( self::request( 'POST', '/api/wordpress/pages', $body ) );
 	}
 
 	/**
