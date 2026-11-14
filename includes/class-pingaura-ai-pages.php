@@ -111,9 +111,18 @@ final class PingAura_AI_Pages {
 		}
 		set_transient( self::LOCK_TRANSIENT, time(), self::LOCK_TTL );
 
-		$state  = self::state();
-		$chunks = array_slice( self::chunk( self::collect() ), 0, self::MAX_REQUESTS );
-		$last   = count( $chunks ) - 1;
+		$state   = self::state();
+		$whole   = true;
+		$entries = self::collect( $whole );
+		$all     = self::chunk( $entries );
+		$chunks  = array_slice( $all, 0, self::MAX_REQUESTS );
+		$last    = count( $chunks ) - 1;
+		// PingAura removes pages missing from the list only when every page was sent.
+		$whole  = $whole && count( $all ) === count( $chunks ) && count( $entries ) === array_sum( array_map( 'count', $all ) );
+		$sync   = array(
+			'sync_id'    => wp_generate_uuid4(),
+			'started_at' => time(),
+		);
 		$totals = array(
 			'received' => 0,
 			'added'    => 0,
@@ -124,7 +133,7 @@ final class PingAura_AI_Pages {
 		$code   = 200;
 
 		foreach ( $chunks as $index => $chunk ) {
-			$data = PingAura_AI_Api::send_pages( $chunk, $state, $index === $last );
+			$data = PingAura_AI_Api::send_pages( $chunk, $state, $whole && $index === $last, $sync );
 
 			if ( is_wp_error( $data ) ) {
 				$error  = $data->get_error_data();
@@ -187,9 +196,10 @@ final class PingAura_AI_Pages {
 	 * The home page, then published pages, posts and products, each newest
 	 * change first, up to MAX_PAGES entries without duplicate addresses.
 	 *
+	 * @param bool $whole Set to false when MAX_PAGES may have left pages out.
 	 * @return array[] Entries with url, title and type.
 	 */
-	private static function collect() {
+	private static function collect( &$whole ) {
 		$entries = array();
 		self::add_entry( $entries, home_url( '/' ), get_bloginfo( 'name' ), 'page' );
 
@@ -201,6 +211,7 @@ final class PingAura_AI_Pages {
 		foreach ( $types as $type ) {
 			$remaining = self::MAX_PAGES - count( $entries );
 			if ( $remaining <= 0 ) {
+				$whole = false;
 				break;
 			}
 
@@ -221,6 +232,9 @@ final class PingAura_AI_Pages {
 			);
 
 			$ids = array_map( 'intval', $query->posts );
+			if ( count( $ids ) >= $remaining ) {
+				$whole = false;
+			}
 			if ( function_exists( '_prime_post_caches' ) ) {
 				_prime_post_caches( $ids, true, false );
 			}
@@ -237,7 +251,8 @@ final class PingAura_AI_Pages {
 	}
 
 	/**
-	 * Adds an entry unless its address is already listed or unusable.
+	 * Adds an entry unless its address is already listed, unusable or carries a
+	 * query string, as with plain permalinks, which PingAura does not take.
 	 *
 	 * @param array[] $entries Entries keyed by address.
 	 * @param string  $url     Absolute address.
@@ -247,7 +262,7 @@ final class PingAura_AI_Pages {
 	private static function add_entry( array &$entries, $url, $title, $type ) {
 		$url    = esc_url_raw( $url, array( 'http', 'https' ) );
 		$scheme = wp_parse_url( $url, PHP_URL_SCHEME );
-		if ( '' === $url || ! is_string( $scheme ) || strlen( $url ) > self::MAX_URL_CHARS || isset( $entries[ $url ] ) ) {
+		if ( '' === $url || ! is_string( $scheme ) || strlen( $url ) > self::MAX_URL_CHARS || isset( $entries[ $url ] ) || null !== wp_parse_url( $url, PHP_URL_QUERY ) ) {
 			return;
 		}
 

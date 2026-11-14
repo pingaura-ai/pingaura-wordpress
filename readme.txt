@@ -18,7 +18,6 @@ With the plugin active, the AI Traffic section of PingAura shows:
 
 * Visits referred by AI assistants such as ChatGPT, Perplexity and Gemini, by page.
 * Requests from AI crawlers such as GPTBot, ClaudeBot and PerplexityBot (optional).
-
 * Human visits, countries and top pages alongside them.
 
 It can also tell Bing and other IndexNow search engines about new and updated pages as soon as they are published (optional). Bing powers the web results in ChatGPT search and Copilot, so this helps new pages reach AI answers sooner.
@@ -83,11 +82,11 @@ Data is sent to `https://telemetry.pingaura.ai/v1/events` with your ingest key.
 * After approval, your site sends the one-time code, the code verifier and your site's address to `https://www.pingaura.ai/api/wordpress/connect/token`, and receives a site ID and a site secret, which are stored in your database and never shown in the browser.
 * Each time an administrator opens PingAura AI, Dashboard, your site requests a short-lived panel address from `https://www.pingaura.ai/api/wordpress/panel-session` and shows it in a frame. The panel then loads from `https://www.pingaura.ai` in the administrator's browser.
 * Each time an administrator opens PingAura AI, Fixes, or applies a fix, your site requests the suggested fixes from `https://www.pingaura.ai/api/wordpress/fixes`.
-* Once a day, a few seconds after you connect, and shortly after you change Settings → Reading → Search engine visibility, your site sends `https://www.pingaura.ai/api/wordpress/pages` the addresses and titles of your published pages, posts and products (up to 1,000; password-protected ones are left out), whether search engines are discouraged from indexing the site, and whether it is in maintenance mode. PingAura uses this list to check your pages when it cannot read your sitemap, for example while search engines are discouraged or the site is in maintenance mode.
+* Once a day, a few seconds after you connect, and shortly after you change Settings → Reading → Search engine visibility, your site sends `https://www.pingaura.ai/api/wordpress/pages` the addresses and titles of your published pages, posts and products (up to 1,000; password-protected ones and addresses with a query string, as with plain permalinks, are left out), whether search engines are discouraged from indexing the site, and whether it is in maintenance mode, with a random ID and the start time of each sync. PingAura uses this list to check your pages when it cannot read your sitemap, for example while search engines are discouraged or the site is in maintenance mode. When a sync sends the whole list, PingAura removes the pages it had from an earlier list that are no longer on it.
 * When a fix is applied or undone, your site tells `https://www.pingaura.ai/api/wordpress/fixes/{fix}/applied` or `/reverted`, with a SHA-256 checksum of the applied content.
 * When you click Disconnect, deactivate the plugin or delete it, your site tells `https://www.pingaura.ai/api/wordpress/disconnect`, and the site ID and secret are deleted.
 
-These requests carry your site ID and a signature made with the site secret. To change the address, for example to test against another PingAura environment, define `PINGAURA_AI_APP_URL` in wp-config.php.
+These requests carry your site ID and a signature made with the site secret. To send them to a different address, define `PINGAURA_AI_APP_URL` in wp-config.php.
 
 You are responsible for having a lawful basis, or your visitors' consent where it is required, to send this data. The plugin adds suggested text to Settings → Privacy, and the `pingaura_telemetry_should_track` filter lets a consent tool turn tracking off for a visitor.
 
@@ -175,7 +174,7 @@ Not for visitors. An administrator who turns on test visits gets a cookie in the
 * Apply uses exactly the fix you previewed, at the place you previewed it; if the fix changed in the meantime, you are asked to review it again.
 * The llms.txt and robots.txt fixes need pretty permalinks.
 * The settings page moved to PingAura AI → Settings. The old address redirects.
-* While connected, the site sends PingAura the list of its published pages, posts and products once a day, so PingAura can check them even when the sitemap is off, for example while search engines are discouraged or the site is in maintenance mode.
+* While connected, the site sends PingAura the list of its published pages, posts and products once a day, so PingAura can check them even when the sitemap is off, for example while search engines are discouraged or the site is in maintenance mode. Pages you unpublish or delete leave PingAura at the next full list.
 * The Fixes page says why there are no fixes, for example when PingAura has not audited the site yet or could not read its pages.
 
 = 1.2.0 =

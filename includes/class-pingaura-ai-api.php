@@ -254,17 +254,21 @@ final class PingAura_AI_Api {
 	 *
 	 * @param array[] $pages    Entries with url, title and type, at most 100.
 	 * @param array   $state    blog_public and maintenance flags.
-	 * @param bool    $complete Whether this is the last part of the sync.
+	 * @param bool    $complete Whether this is the last part of a sync that sent every page, so PingAura may remove
+	 *                          the pages it no longer lists.
+	 * @param array   $sync     sync_id (UUID) and started_at (Unix time) of this sync.
 	 * @return array|WP_Error Counts from PingAura, or an error whose data holds the HTTP status.
 	 */
-	public static function send_pages( array $pages, array $state, $complete ) {
+	public static function send_pages( array $pages, array $state, $complete, array $sync ) {
 		$body = array(
-			'pages'    => array_values( $pages ),
-			'state'    => array(
+			'pages'      => array_values( $pages ),
+			'state'      => array(
 				'blog_public' => ! empty( $state['blog_public'] ),
 				'maintenance' => ! empty( $state['maintenance'] ),
 			),
-			'complete' => (bool) $complete,
+			'complete'   => (bool) $complete,
+			'sync_id'    => isset( $sync['sync_id'] ) ? (string) $sync['sync_id'] : '',
+			'started_at' => isset( $sync['started_at'] ) ? (int) $sync['started_at'] : 0,
 		);
 
 		return self::decode( self::request( 'POST', '/api/wordpress/pages', $body ) );

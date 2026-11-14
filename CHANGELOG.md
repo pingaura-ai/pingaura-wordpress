@@ -13,12 +13,12 @@ All notable changes to this plugin are documented here. The format follows [Keep
 - Requests to PingAura are signed with a per-site secret, and the list of fixes is accepted only with a valid response signature.
 - A request PingAura refuses as a replay (HTTP 409) is signed again with a later timestamp and sent once more.
 - The site disconnects from PingAura when you click Disconnect, deactivate the plugin or delete it.
-- `PINGAURA_AI_APP_URL` constant to point the connection at another PingAura environment.
+- `PINGAURA_AI_APP_URL` constant to send the plugin's requests to a different address.
 - Apply uses exactly the fix you previewed: its kind, target path and content. If PingAura changed any of them in the meantime, nothing is applied and you are asked to review it again.
 - The llms.txt and robots.txt fixes need pretty permalinks (Settings → Permalinks). With plain permalinks they are shown but cannot be applied.
 - JSON-LD is not added to addresses with a query string, such as `?p=5`, other than tracking parameters such as `utm_` tags, `gclid` and `fbclid`.
 - Reload button on the PingAura AI page, to open a fresh panel session after the panel times out.
-- While connected, the site sends PingAura the addresses and titles of its published pages, posts and WooCommerce products (up to 1,000, home page first, password-protected ones left out), with whether search engines are discouraged and whether the site is in maintenance mode. PingAura uses the list when it cannot read the sitemap. The list is sent through WP-Cron a few seconds after connecting, once a day, and shortly after Search engine visibility changes, to `/api/wordpress/pages` in signed requests of up to 100 pages.
+- While connected, the site sends PingAura the addresses and titles of its published pages, posts and WooCommerce products (up to 1,000, home page first, password-protected ones left out), with whether search engines are discouraged and whether the site is in maintenance mode. PingAura uses the list when it cannot read the sitemap. The list is sent through WP-Cron a few seconds after connecting, once a day, and shortly after Search engine visibility changes, to `/api/wordpress/pages` in signed requests of up to 100 pages. Each sync carries a random ID and its start time, and when it sends the whole list PingAura removes the pages no longer on it. Addresses with a query string, as with plain permalinks, are left out.
 - `pingaura_ai_maintenance_mode` filter, for maintenance plugins that WordPress itself does not detect.
 - The PingAura AI page shows when the page list was last sent and how many pages PingAura received.
 - The Fixes page explains an empty list when PingAura says why: the site has not been audited yet, an audit is running, PingAura could not read the site's pages, or nothing needs fixing.
