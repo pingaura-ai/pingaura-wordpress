@@ -252,7 +252,7 @@ final class PingAura_AI_Pages {
 
 	/**
 	 * Adds an entry unless its address is already listed, unusable or carries a
-	 * query string, as with plain permalinks, which PingAura does not take.
+	 * query string other than a plain permalink's, which PingAura does not take.
 	 *
 	 * @param array[] $entries Entries keyed by address.
 	 * @param string  $url     Absolute address.
@@ -262,7 +262,11 @@ final class PingAura_AI_Pages {
 	private static function add_entry( array &$entries, $url, $title, $type ) {
 		$url    = esc_url_raw( $url, array( 'http', 'https' ) );
 		$scheme = wp_parse_url( $url, PHP_URL_SCHEME );
-		if ( '' === $url || ! is_string( $scheme ) || strlen( $url ) > self::MAX_URL_CHARS || isset( $entries[ $url ] ) || null !== wp_parse_url( $url, PHP_URL_QUERY ) ) {
+		$query  = wp_parse_url( $url, PHP_URL_QUERY );
+		if ( '' === $url || ! is_string( $scheme ) || strlen( $url ) > self::MAX_URL_CHARS || isset( $entries[ $url ] ) ) {
+			return;
+		}
+		if ( null !== $query && ! self::is_plain_permalink_query( (string) $query ) ) {
 			return;
 		}
 
@@ -271,6 +275,35 @@ final class PingAura_AI_Pages {
 			'title' => self::plain_title( $title ),
 			'type'  => $type,
 		);
+	}
+
+	/**
+	 * Whether a query string is one of WordPress's plain permalinks: p=<id>,
+	 * page_id=<id> or post_type=<type>&p=<id>, each key once.
+	 *
+	 * @param string $query Query string, without the question mark.
+	 * @return bool
+	 */
+	private static function is_plain_permalink_query( $query ) {
+		$pairs = array();
+		foreach ( explode( '&', $query ) as $pair ) {
+			$parts = explode( '=', $pair, 2 );
+			if ( 2 !== count( $parts ) || isset( $pairs[ $parts[0] ] ) ) {
+				return false;
+			}
+			$pairs[ $parts[0] ] = $parts[1];
+		}
+		ksort( $pairs );
+
+		$id   = '/^[1-9][0-9]{0,19}$/';
+		$keys = array_keys( $pairs );
+		if ( array( 'p' ) === $keys || array( 'page_id' ) === $keys ) {
+			return 1 === preg_match( $id, (string) reset( $pairs ) );
+		}
+
+		return array( 'p', 'post_type' ) === $keys
+			&& 1 === preg_match( $id, $pairs['p'] )
+			&& 1 === preg_match( '/^[a-z0-9_-]{1,20}$/', $pairs['post_type'] );
 	}
 
 	/**
