@@ -21,6 +21,11 @@ final class PingAura_AI_Admin {
 	const STYLE_HANDLE = 'pingaura-ai-admin';
 
 	/**
+	 * The PingAura beacon (small master) as the menu icon; WordPress recolours it to the admin colour scheme.
+	 */
+	const MENU_ICON = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9Ii00MzEuMjIgMCA4NjIuNDQgNzcwIj48ZyBmaWxsPSIjYTdhYWFkIj48cGF0aCBkPSJNMCAwTDEwNi4wNiAxODkuMzhBNDUyIDQ1MiAwIDAgMSAtMTA2LjA2IDE4OS4zOFoiPjwvcGF0aD48cGF0aCBkPSJNLTEzMi4zNCAyMzYuMzFBNTA0IDUwNCAwIDAgMCAxMzIuMzQgMjM2LjMxTDE2MS40NiAyODguMzFBNTYyIDU2MiAwIDAgMSAtMTYxLjQ2IDI4OC4zMVoiPjwvcGF0aD48cGF0aCBkPSJNLTE4Ny40NCAzMzQuNjlBNjE0IDYxNCAwIDAgMCAxODcuNDQgMzM0LjY5TDIyMS4yNyAzOTUuMTFBNjgyIDY4MiAwIDAgMSAtMjIxLjI3IDM5NS4xMVoiPjwvcGF0aD48cGF0aCBkPSJNLTI0Ny4wNyA0NDEuMTdBNzM0IDczNCAwIDAgMCAyNDcuMDcgNDQxLjE3TDQzMS4yMiA3NzBMMCA1MzUuODdMLTQzMS4yMiA3NzBaIj48L3BhdGg+PC9nPjwvc3ZnPg==';
+
+	/**
 	 * Hook suffixes of the plugin's pages.
 	 *
 	 * @var string[]
@@ -51,7 +56,7 @@ final class PingAura_AI_Admin {
 			'manage_options',
 			self::MENU,
 			array( __CLASS__, 'render_panel' ),
-			'dashicons-chart-line',
+			self::MENU_ICON,
 			81
 		);
 		add_submenu_page(

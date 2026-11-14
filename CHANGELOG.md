@@ -6,7 +6,7 @@ All notable changes to this plugin are documented here. The format follows [Keep
 
 ### Added
 
-- PingAura AI menu in wp-admin, for users who can manage options.
+- PingAura AI menu in wp-admin, for users who can manage options. Its icon is the PingAura beacon, coloured to match the admin colour scheme.
 - Connect to PingAura: a browser approval with a one-time state and a PKCE code verifier. PingAura checks the pending state through the `pingaura/v1/connect-check` REST route before linking the site.
 - Dashboard page that shows the PingAura panel in a frame, using a short-lived address requested from PingAura on each visit.
 - Fixes page to preview, apply and undo suggested fixes: JSON-LD in the page head, a served `/llms.txt` and rules appended to the generated `robots.txt`. Undo restores the fix that was applied before, if any.

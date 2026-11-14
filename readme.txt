@@ -169,7 +169,7 @@ Not for visitors. An administrator who turns on test visits gets a cookie in the
 
 = 1.3.0 =
 * Renamed to PingAura AI. Settings, data and the plugin's folder are unchanged.
-* New PingAura AI menu: connect the site to PingAura and see the PingAura dashboard in wp-admin.
+* New PingAura AI menu, with the PingAura logo as its icon: connect the site to PingAura and see the PingAura dashboard in wp-admin.
 * Fixes page: preview, apply and undo suggested JSON-LD, llms.txt and robots.txt fixes.
 * Apply uses exactly the fix you previewed, at the place you previewed it; if the fix changed in the meantime, you are asked to review it again.
 * The llms.txt and robots.txt fixes need pretty permalinks.
