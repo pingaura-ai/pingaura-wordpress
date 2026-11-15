@@ -22,6 +22,8 @@ jobs:
           tools: none
       - name: Syntax check
         run: find . -name '*.php' -not -path './vendor/*' -print0 | xargs -0 -n1 php -l
+      - name: Unit tests
+        run: php tests/test-lead-mapper.php
 
   phpcs:
     runs-on: ubuntu-latest

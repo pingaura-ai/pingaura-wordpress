@@ -3,7 +3,7 @@
  * Plugin Name:       PingAura AI: AI Visibility, AI Traffic and Fixes
  * Plugin URI:        https://www.pingaura.ai/docs/ai-traffic/wordpress-setup
  * Description:       See how AI assistants like ChatGPT, Gemini and Perplexity mention your brand, track the AI visits and crawlers you get, and apply suggested fixes.
- * Version:           1.3.0
+ * Version:           1.4.0
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            PingAura AI
@@ -17,13 +17,15 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'PINGAURA_TELEMETRY_VERSION', '1.3.0' );
+define( 'PINGAURA_TELEMETRY_VERSION', '1.4.0' );
 define( 'PINGAURA_TELEMETRY_FILE', __FILE__ );
 
 require_once __DIR__ . '/includes/class-pingaura-telemetry-settings.php';
 require_once __DIR__ . '/includes/class-pingaura-telemetry-client.php';
 require_once __DIR__ . '/includes/class-pingaura-telemetry-tracker.php';
 require_once __DIR__ . '/includes/class-pingaura-telemetry-indexnow.php';
+require_once __DIR__ . '/includes/class-pingaura-telemetry-lead-mapper.php';
+require_once __DIR__ . '/includes/class-pingaura-telemetry-leads.php';
 require_once __DIR__ . '/includes/class-pingaura-telemetry-admin.php';
 require_once __DIR__ . '/includes/class-pingaura-ai-api.php';
 require_once __DIR__ . '/includes/class-pingaura-ai-connect.php';
@@ -33,6 +35,7 @@ require_once __DIR__ . '/includes/class-pingaura-ai-admin.php';
 
 PingAura_Telemetry_Tracker::init();
 PingAura_Telemetry_IndexNow::init();
+PingAura_Telemetry_Leads::init();
 PingAura_AI_Connect::init();
 PingAura_AI_Fixes::init();
 PingAura_AI_Pages::init();

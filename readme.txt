@@ -4,7 +4,7 @@ Tags: ai visibility, ai traffic, chatgpt, ai crawlers, analytics
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.3.0
+Stable tag: 1.4.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -41,7 +41,7 @@ Fixes are added through WordPress hooks; the plugin does not edit your theme or 
 * AI crawlers do not run scripts, so they are recorded on the server when the request reaches WordPress.
 * Query strings are removed from page addresses, except utm_ campaign tags, and from referrers. Fragments are always removed.
 * Logged-in users are not tracked in Live mode.
-* The plugin sets no cookies for visitors. Without a browser key it stores nothing in their browser.
+* The plugin sets no cookies for visitors, except the 30-minute `pa_src` source cookie when form leads are on. Without a browser key or form leads it stores nothing in their browser.
 * If PingAura cannot be reached, sending pauses for two minutes, so an outage never slows your site.
 
 = Contact clicks (optional) =
@@ -49,6 +49,23 @@ Fixes are added through WordPress hooks; the plugin does not edit your theme or 
 Add a browser key to also record clicks on phone, email and WhatsApp links, including the Joinchat button, by page and by the AI assistant or other source that brought the visitor. A click shows interest; it is not a confirmed lead.
 
 Create the key in PingAura under Settings, API & MCP, Create key, Browser, and paste it into the Browser key field. The key is public and safe to show in your page's HTML. The plugin then loads PingAura's browser script on your pages, following the same Off, Test and Live modes as visits. It asks LiteSpeed Cache and WP Rocket not to delay the script, so the first tap is counted.
+
+= Form leads (optional) =
+
+Turn on "Send form submissions to PingAura Leads" to add every Elementor Pro form submission with an email address or phone number to the Leads inbox in PingAura, with the AI assistant, search engine or social site that brought the visitor.
+
+* Fields are matched by type, not by name: the first email field, the first phone field, the first paragraph (textarea) field as the message, and a text field labelled Name, Full name or Your name. If the form has no phone field, a text field labelled Phone, Mobile, WhatsApp, Contact or Contact number is used when it holds a phone number. Other text, select, radio, checkbox, number and date answers are sent as custom fields. Hidden, honeypot, reCAPTCHA, step and HTML fields are never sent.
+* Phone numbers must include the country code (for example +91 98765 43210); ask for it on your form. The plugin never adds one. Spaces, dashes, dots and brackets are removed, a leading 00 becomes +, and a (0) after the country code is removed. A number without a country code is kept as a custom field named phone, so it is not lost when the form also has an email address.
+* A submission without an email address or a phone number is not sent.
+* On most hosts each submission is sent after the visitor gets the form's reply; on others it adds at most about a second. A slow or unreachable PingAura never breaks the form, and Elementor's own actions, such as its email, keep working.
+* The lead records consent as given when the form's acceptance checkbox is ticked, refused when it is left unticked, and unknown when the form has none.
+* To credit the lead to its source, a small script stores where the visit came from in a first-party cookie named `pa_src` for 30 minutes: the referring site's host name and the utm_source, utm_medium and ref tags, never full addresses.
+
+You need a PingAura API key with the write scope and the Domain ID from PingAura's Domain settings. Without Elementor Pro, nothing is sent.
+
+= WhatsApp chat links (optional) =
+
+Turn on "Add the page title and link to WhatsApp chat links that have no message" so that a visitor who taps a wa.me or api.whatsapp.com link without a message starts the chat with "Hi, I'd like to know more about" and the page they were reading. Links that already have a message, and the Joinchat button, are left alone. Nothing is sent to PingAura.
 
 = Test mode =
 
@@ -72,6 +89,10 @@ Nothing is sent until you save an ingest key or a browser key and choose Test or
 Data is sent to `https://telemetry.pingaura.ai/v1/events` with your ingest key.
 
 **Contact clicks (optional, off until you save a browser key).** The visitor's browser loads a script from `https://telemetry.pingaura.ai/t.js`. When the visitor clicks a phone, email or WhatsApp link, the browser sends to `https://telemetry.pingaura.ai/v1/browser`: that a click happened and its type (phone, email or WhatsApp), the page URL without its query string, the site or AI assistant that brought the visitor (the referring site's address and the utm_source tag), and your browser key and domain. The phone number, email address and message are not sent. As with any web request, PingAura's server also receives the visitor's IP address and user agent. The script sets no cookies; it stores the landing source in the visitor's browser (local storage) for 30 minutes so a click on a later page is credited to it. The same modes apply: nothing in Off mode, only browsers with test visits turned on in Test mode, and visitors who are not logged in in Live mode.
+
+**Form leads (optional, off by default).** Nothing is sent until you turn on "Send form submissions to PingAura Leads" and save a Leads API key and a Domain ID. From then on, each time a visitor submits an Elementor Pro form with an email address or phone number, your site sends `https://www.pingaura.ai/api/v1/domains/{domainId}/leads`, with your API key: the name, email address, phone number and message the visitor entered, the form's other answers as custom fields (hidden, honeypot, reCAPTCHA, step and HTML fields are left out), whether the visitor ticked the form's acceptance checkbox, a random submission ID, the form's name, the path of the page without its query string, and the source of the visit: which AI assistant brought the visitor (ChatGPT, Claude, Perplexity, Gemini, Copilot, DeepSeek or Grok), or otherwise, for clear cases only, the search engine or social site host name, or that the visit came from an email or a paid campaign. The source is read from the `pa_src` cookie the plugin sets in the visitor's browser for 30 minutes, which holds only the referring site's host name and the utm_source, utm_medium and ref tags. PingAura stores the lead in your Leads inbox and encrypts the contact details.
+
+**WhatsApp chat links (optional, off by default).** Sends nothing to PingAura. The visitor's browser opens WhatsApp with the page's title and address as the message.
 
 **IndexNow (optional, off by default).** When you turn on IndexNow, the plugin sends the addresses of published pages, your site's host name and an IndexNow key to `https://api.indexnow.org/indexnow`, which shares them with participating search engines such as Bing, Yandex, Naver and Seznam. This happens when a page is published or updated, and when you click "Submit all published pages". No visitor data is sent. The key is generated by the plugin and served at `/{key}.txt` on your site so search engines can verify it. IndexNow terms: https://www.indexnow.org/terms
 
@@ -159,13 +180,26 @@ Only that a click on a phone, email or WhatsApp link happened, on which page, an
 
 = Does it set cookies? =
 
-Not for visitors. An administrator who turns on test visits gets a cookie in their own browser for 24 hours.
+Only when form leads are on: a `pa_src` cookie that holds where the visit came from for 30 minutes. An administrator who turns on test visits gets a cookie in their own browser for 24 hours.
+
+= Which forms are sent to PingAura Leads? =
+
+Elementor Pro forms, once you turn on form leads. A submission needs an email address or a phone number. Other form plugins are not supported yet.
+
+= Can the form break if PingAura is down? =
+
+No. Any error is ignored. On most hosts the submission is sent after the visitor gets the form's reply; on others, such as Apache with mod_php, it adds at most about a second. The settings page shows the last reply from PingAura when your server can wait for it (PHP-FPM or LiteSpeed).
 
 = What does the reply on the settings page mean? =
 
 202 means PingAura accepted the event. 401 means the key is wrong or revoked. 403 means the domain is not registered on the key's account, or PingAura Telemetry is not enabled for it.
 
 == Changelog ==
+
+= 1.4.0 =
+* Optional: send Elementor Pro form submissions to PingAura Leads, with the AI assistant or other source that brought the visitor. Fields are matched by type, phone numbers are sent in international format, and on most hosts the form's reply is not delayed.
+* Optional: add the page title and link to WhatsApp chat links that have no message.
+* New settings: Send form submissions to PingAura Leads, Leads API key, Domain ID, and the WhatsApp link option. All are off or empty by default.
 
 = 1.3.0 =
 * Renamed to PingAura AI. Settings, data and the plugin's folder are unchanged.
@@ -191,6 +225,9 @@ Not for visitors. An administrator who turns on test visits gets a cookie in the
 * First release.
 
 == Upgrade Notice ==
+
+= 1.4.0 =
+Adds optional Elementor Pro form leads and WhatsApp link text. Both are off until you turn them on.
 
 = 1.3.0 =
 Renamed to PingAura AI. Adds an optional PingAura AI menu with a dashboard and one-click fixes. Telemetry settings move to PingAura AI → Settings and keep working without connecting.

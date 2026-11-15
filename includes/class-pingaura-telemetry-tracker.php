@@ -280,7 +280,8 @@ final class PingAura_Telemetry_Tracker {
 		 *
 		 * @param bool   $track Whether to record the event.
 		 * @param string $kind  'visit' for a page view, 'crawler' for an AI crawler request,
-	 *                      'click' for loading the contact-click script.
+	 *                      'click' for loading the contact-click script, 'source' for
+	 *                      storing the visit source used by form leads.
 		 */
 		if ( ! apply_filters( 'pingaura_telemetry_should_track', true, 'visit' ) ) {
 			return $done;

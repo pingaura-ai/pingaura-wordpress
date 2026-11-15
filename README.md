@@ -14,7 +14,7 @@ For Next.js, Node.js and Cloudflare Workers, use [`@pingaura/telemetry`](https:/
 - Query strings are stripped from page URLs except `utm_*` tags, and from referrers. Fragments are always stripped.
 - Logged-in users are not tracked in Live mode.
 - If PingAura is unreachable or rejects an event, sending pauses for two minutes.
-- No cookies are set for visitors.
+- No cookies are set for visitors, except `pa_src` when form leads are on (see below).
 
 ## Contact clicks (optional)
 
@@ -25,6 +25,19 @@ Save a browser key (PingAura: Settings, API & MCP, Create key, Browser) in the *
 - The number, address and message are not sent. The script sets no cookies and keeps the landing source in local storage for 30 minutes.
 - The script is excluded from delayed JavaScript in LiteSpeed Cache (`litespeed_optm_js_defer_exc`) and WP Rocket (`rocket_delay_js_exclusions`).
 - `pingaura_telemetry_should_track` is called with `$kind = 'click'` before the script is added.
+
+## Form leads (optional)
+
+Turn on **Send form submissions to PingAura Leads** and save a **Leads API key** (write scope) and the **Domain ID** (PingAura: Domain settings) to post Elementor Pro submissions to `https://www.pingaura.ai/api/v1/domains/{domainId}/leads`.
+
+- Hooked to `elementor_pro/forms/new_record`. Fields are mapped by type, not id: first `email`, first `tel` (spaces, dashes, dots and brackets removed, a leading `00` turned into `+`, and a `(0)` after the country code removed; no country code is ever added, so a number without one is kept as the custom field `phone` instead), first `textarea` as `message`, a `text` field whose id or label is name, full name or your name, and other answers (text, select, radio, checkbox, number, date, further textareas) as `custom_fields`. With no usable `tel` field, a `text` field whose id or label is phone, mobile, whatsapp, contact, contact number or phone number is used as the phone if it reads as one. Without an email or a phone the submission is not sent.
+- `consent_state`: `granted` for a ticked acceptance field, `refused` for an unticked one, `unknown` when the form has none.
+- Sent on `shutdown`, after the response is flushed where `fastcgi_finish_request()` or `litespeed_finish_request()` exists (blocking, 5 s, status shown on the settings page); otherwise (for example Apache with mod_php, where the visitor's connection stays open until PHP finishes) `ignore_user_abort()` and `flush()` are called and the request is capped at 1 s without reading the answer, so the form's reply can arrive up to about a second later. Errors are swallowed; Elementor's actions are unaffected. Submitted values are never logged.
+- Source attribution: an inline script stores the referring host and `utm_source`, `utm_medium`, `ref` and `ct-referrer` in the `pa_src` cookie for 30 minutes. The server classifies it into `ai_source` with the same host and parameter rules as PingAura, and otherwise sends `source_kind`/`source_name` for search, social, email and paid.
+
+## WhatsApp link text (optional)
+
+**Add the page title and link to WhatsApp chat links that have no message** adds a click listener that sets `text` on `wa.me` and `api.whatsapp.com/send` links that have none. Links inside `.joinchat` are skipped. Nothing is sent to PingAura.
 
 ## PingAura AI menu (optional)
 
