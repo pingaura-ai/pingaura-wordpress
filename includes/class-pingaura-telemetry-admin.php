@@ -71,7 +71,7 @@ final class PingAura_Telemetry_Admin {
 			__( 'PingAura AI', 'pingaura-telemetry' ),
 			wp_kses_post(
 				wpautop(
-					__( 'When you visit this site, we send the address of the page you viewed (without query parameters other than utm_ campaign tags), its title, the address of the page that referred you, your IP address and your browser\'s user agent to PingAura, an analytics service, to measure visits from AI assistants. Your IP address is used to determine your country. No cookies are set. If contact-click tracking is on, a script loaded from PingAura records when you click a phone, email or WhatsApp link on this site, with the page and the site or AI assistant that brought you here, but not the number, address or message. It keeps that source in your browser\'s local storage for 30 minutes. See PingAura\'s privacy policy: https://www.pingaura.ai/privacy-policy', 'pingaura-telemetry' )
+					__( 'When you visit this site, we send the address of the page you viewed (without query parameters other than utm_ campaign tags), its title, the address of the page that referred you, your IP address and your browser\'s user agent to PingAura, an analytics service, to measure visits from AI assistants. Your IP address is used to determine your country. No cookies are set for this. If contact-click tracking is on, a script loaded from PingAura records when you click a phone, email or WhatsApp link on this site, with the page and the site or AI assistant that brought you here, but not the number, address or message. It keeps that source in your browser\'s local storage for 30 minutes. If form leads are turned on, what you enter in a contact form (such as your name, email address, phone number and message) is also sent to PingAura with the page you sent it from and the site, search engine or AI assistant that brought you here. To record that source, a cookie named pa_src holds the referring site\'s address and any utm_source, utm_medium or ref tag for 30 minutes. See PingAura\'s privacy policy: https://www.pingaura.ai/privacy-policy', 'pingaura-telemetry' )
 				)
 			)
 		);
@@ -102,8 +102,13 @@ final class PingAura_Telemetry_Admin {
 			? map_deep( wp_unslash( $_POST[ PingAura_Telemetry_Settings::OPTION ] ), 'sanitize_text_field' )
 			: array();
 
+		$leads = isset( $_POST[ PingAura_Telemetry_Leads::OPTION ] ) && is_array( $_POST[ PingAura_Telemetry_Leads::OPTION ] )
+			? map_deep( wp_unslash( $_POST[ PingAura_Telemetry_Leads::OPTION ] ), 'sanitize_text_field' )
+			: array();
+
 		PingAura_Telemetry_Settings::save( $input );
 		PingAura_Telemetry_IndexNow::set_enabled( ! empty( $input['indexnow'] ) );
+		PingAura_Telemetry_Leads::save( $leads );
 
 		// Page caches keep serving the old script until they are cleared.
 		do_action( 'litespeed_purge_all' ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- LiteSpeed Cache's own purge hook.
@@ -221,6 +226,9 @@ final class PingAura_Telemetry_Admin {
 		$test_on  = isset( $_COOKIE[ PingAura_Telemetry_Tracker::TEST_COOKIE ] ) && '1' === $_COOKIE[ PingAura_Telemetry_Tracker::TEST_COOKIE ];
 		$indexnow = PingAura_Telemetry_IndexNow::is_enabled();
 		$in_last  = PingAura_Telemetry_IndexNow::last_status();
+		$leads    = PingAura_Telemetry_Leads::get();
+		$lname    = PingAura_Telemetry_Leads::OPTION;
+		$le_last  = PingAura_Telemetry_Leads::last_status();
 
 		delete_transient( self::notice_key() );
 		?>
@@ -344,6 +352,67 @@ final class PingAura_Telemetry_Admin {
 					</tr>
 				</table>
 
+				<h2><?php esc_html_e( 'Leads and WhatsApp', 'pingaura-telemetry' ); ?></h2>
+				<p><?php esc_html_e( 'Both are off by default and work without the ingest key.', 'pingaura-telemetry' ); ?></p>
+
+				<table class="form-table" role="presentation">
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Form leads', 'pingaura-telemetry' ); ?></th>
+						<td>
+							<label>
+								<input type="checkbox" name="<?php echo esc_attr( $lname ); ?>[enabled]" value="1" <?php checked( $leads['enabled'] ); ?>>
+								<?php esc_html_e( 'Send form submissions to PingAura Leads', 'pingaura-telemetry' ); ?>
+							</label>
+							<p class="description"><?php esc_html_e( 'Elementor Pro forms with an email or phone field. Fields are matched by type: email, phone, the first paragraph field as the message, a Name field, and other answers as custom fields. Each submission is sent after the visitor sees the form\'s reply, so the form is never slowed down. Elementor\'s own actions, such as its email, keep working.', 'pingaura-telemetry' ); ?></p>
+							<?php if ( $leads['enabled'] && ! defined( 'ELEMENTOR_PRO_VERSION' ) ) : ?>
+								<p class="description"><?php esc_html_e( 'Elementor Pro is not active, so nothing is sent.', 'pingaura-telemetry' ); ?></p>
+							<?php endif; ?>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="pingaura-leads-key"><?php esc_html_e( 'Leads API key', 'pingaura-telemetry' ); ?></label></th>
+						<td>
+							<input id="pingaura-leads-key" type="password" class="regular-text" autocomplete="new-password" spellcheck="false" name="<?php echo esc_attr( $lname ); ?>[api_key]" value="" placeholder="pa_…">
+							<p class="description">
+								<?php
+								if ( PingAura_Telemetry_Leads::has_api_key() ) {
+									esc_html_e( 'Saved. Leave blank to keep it.', 'pingaura-telemetry' );
+								} else {
+									esc_html_e( 'An API key with the write scope, created in PingAura under Settings, API & MCP.', 'pingaura-telemetry' );
+								}
+								?>
+							</p>
+							<?php if ( PingAura_Telemetry_Leads::has_api_key() ) : ?>
+								<label><input type="checkbox" name="<?php echo esc_attr( $lname ); ?>[clear_api_key]" value="1"> <?php esc_html_e( 'Clear the saved key', 'pingaura-telemetry' ); ?></label>
+							<?php endif; ?>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="pingaura-leads-domain"><?php esc_html_e( 'Domain ID', 'pingaura-telemetry' ); ?></label></th>
+						<td>
+							<input id="pingaura-leads-domain" type="text" class="regular-text" autocomplete="off" spellcheck="false" name="<?php echo esc_attr( $lname ); ?>[domain_id]" value="<?php echo esc_attr( $leads['domain_id'] ); ?>" placeholder="00000000-0000-0000-0000-000000000000">
+							<p class="description"><?php esc_html_e( 'Find it in PingAura under Domain settings.', 'pingaura-telemetry' ); ?></p>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="pingaura-leads-country"><?php esc_html_e( 'Default country code', 'pingaura-telemetry' ); ?></label></th>
+						<td>
+							<input id="pingaura-leads-country" type="text" class="small-text" autocomplete="off" spellcheck="false" name="<?php echo esc_attr( $lname ); ?>[country_code]" value="<?php echo esc_attr( $leads['country_code'] ); ?>">
+							<p class="description"><?php esc_html_e( 'Added to a 10-digit phone number entered without a country code, such as 9876543210.', 'pingaura-telemetry' ); ?></p>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'WhatsApp links', 'pingaura-telemetry' ); ?></th>
+						<td>
+							<label>
+								<input type="checkbox" name="<?php echo esc_attr( $lname ); ?>[whatsapp_text]" value="1" <?php checked( $leads['whatsapp_text'] ); ?>>
+								<?php esc_html_e( 'Add the page title and link to WhatsApp chat links that have no message', 'pingaura-telemetry' ); ?>
+							</label>
+							<p class="description"><?php esc_html_e( 'When a visitor taps a wa.me or api.whatsapp.com link without a message, the chat opens with the page they were reading. Links that already have a message, and the Joinchat button, are left alone.', 'pingaura-telemetry' ); ?></p>
+						</td>
+					</tr>
+				</table>
+
 				<?php submit_button(); ?>
 			</form>
 
@@ -385,6 +454,12 @@ final class PingAura_Telemetry_Admin {
 					<th scope="row"><?php esc_html_e( 'Last response', 'pingaura-telemetry' ); ?></th>
 					<td><code><?php echo esc_html( $last ? $last['status'] . ' · ' . $last['at'] : __( 'None yet', 'pingaura-telemetry' ) ); ?></code></td>
 				</tr>
+				<?php if ( $le_last ) : ?>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Last lead response', 'pingaura-telemetry' ); ?></th>
+						<td><code><?php echo esc_html( $le_last['status'] . ' · ' . $le_last['at'] ); ?></code></td>
+					</tr>
+				<?php endif; ?>
 				<?php if ( $in_last ) : ?>
 					<tr>
 						<th scope="row"><?php esc_html_e( 'Last IndexNow submission', 'pingaura-telemetry' ); ?></th>

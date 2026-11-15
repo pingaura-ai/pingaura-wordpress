@@ -2,6 +2,20 @@
 
 All notable changes to this plugin are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and versions follow [Semantic Versioning](https://semver.org/).
 
+## [1.4.0] - 2026-11-15
+
+### Added
+
+- Optional sending of Elementor Pro form submissions to PingAura Leads (`POST https://www.pingaura.ai/api/v1/domains/{domainId}/leads`), off by default. Settings: Send form submissions to PingAura Leads, Leads API key (write scope; never shown again after saving, with a Clear checkbox), Domain ID and Default country code (`+91`).
+- Fields are mapped by type through `elementor_pro/forms/new_record`: the first email field, the first phone field, the first textarea as the message, a text field whose id or label is name, full name or your name, and other text, select, radio, number, date and textarea answers as `custom_fields` (keys from the field id or label, up to 20). Hidden, honeypot, reCAPTCHA, step, acceptance and HTML fields are skipped. A filled acceptance field sends `consent_state: granted`, otherwise `not_required`. Submissions with neither an email address nor a phone number are not sent.
+- Phone numbers are normalised to E.164: separators are removed, `00` becomes `+`, and a bare 10-digit number or one with a leading 0 gets the default country code. Numbers that still do not match are left out.
+- The lead carries `external_id` (`elementor-<form id>-<uuid>`), `source_meta` (form name and page path) and `ai_source`, plus `source_kind` and `source_name` for search engines, social sites, email and paid campaigns.
+- `pa_src` first-party cookie (30 minutes, `SameSite=Lax`, `Secure` on HTTPS), set when form leads are on and Elementor Pro is active. It holds the referring host and the `utm_source`, `utm_medium`, `ref` and `ct-referrer` values, at most 200 characters. `pingaura_telemetry_should_track` is called with `$kind = 'source'` before the script sets it.
+- Leads are sent on `shutdown`. With PHP-FPM or LiteSpeed the response is flushed first and the request waits up to 5 seconds so the status can be shown on the settings page and, with `WP_DEBUG_LOG`, logged (status codes only). Otherwise the request is sent without waiting (3-second timeout).
+- Optional WhatsApp link text, off by default: a click on a `wa.me` or `api.whatsapp.com/send` link without a `text` parameter adds "Hi, I'd like to know more about" with the page title and address. Links inside the Joinchat widget are left alone.
+- The front-end script is excluded from delayed JavaScript in LiteSpeed Cache and WP Rocket.
+- Unit tests for the field mapper, phone normaliser and source classifier (`php tests/test-lead-mapper.php`), run in CI and left out of the release zip.
+
 ## [1.3.0] - 2026-11-14
 
 ### Added
@@ -68,6 +82,7 @@ All notable changes to this plugin are documented here. The format follows [Keep
 - `pingaura_telemetry_should_track`, `pingaura_telemetry_track_logged_in_users`, `pingaura_telemetry_crawler_pattern` and `pingaura_telemetry_client_ip` filters.
 - Suggested privacy policy text.
 
+[1.4.0]: https://github.com/pingaura-ai/pingaura-wordpress/releases/tag/v1.4.0
 [1.3.0]: https://github.com/pingaura-ai/pingaura-wordpress/releases/tag/v1.3.0
 [1.2.0]: https://github.com/pingaura-ai/pingaura-wordpress/releases/tag/v1.2.0
 [1.1.0]: https://github.com/pingaura-ai/pingaura-wordpress/releases/tag/v1.1.0
