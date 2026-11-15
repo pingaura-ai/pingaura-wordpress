@@ -54,10 +54,11 @@ Create the key in PingAura under Settings, API & MCP, Create key, Browser, and p
 
 Turn on "Send form submissions to PingAura Leads" to add every Elementor Pro form submission with an email address or phone number to the Leads inbox in PingAura, with the AI assistant, search engine or social site that brought the visitor.
 
-* Fields are matched by type, not by name: the first email field, the first phone field, the first paragraph (textarea) field as the message, and a text field labelled Name, Full name or Your name. Other text, select, radio, number and date answers are sent as custom fields. Hidden, honeypot, reCAPTCHA, step and HTML fields are never sent.
-* Phone numbers are sent in international format. A 10-digit number without a country code gets the Default country code (+91 unless you change it). A number that cannot be read is left out.
+* Fields are matched by type, not by name: the first email field, the first phone field, the first paragraph (textarea) field as the message, and a text field labelled Name, Full name or Your name. If the form has no phone field, a text field labelled Phone, Mobile, WhatsApp, Contact or Contact number is used when it holds a phone number. Other text, select, radio, checkbox, number and date answers are sent as custom fields. Hidden, honeypot, reCAPTCHA, step and HTML fields are never sent.
+* Phone numbers are sent in international format. A 10-digit number without a country code gets the Default country code (+91 unless you change it), and a 0 typed after the country code is dropped. A number that cannot be read is left out.
 * A submission without an email address or a phone number is not sent.
-* Each submission is sent after the visitor sees the form's reply, so a slow or unreachable PingAura never slows down or breaks the form. Elementor's own actions, such as its email, keep working.
+* On most hosts each submission is sent after the visitor gets the form's reply; on others it adds at most about a second. A slow or unreachable PingAura never breaks the form, and Elementor's own actions, such as its email, keep working.
+* The lead records consent as given when the form's acceptance checkbox is ticked, refused when it is left unticked, and unknown when the form has none.
 * To credit the lead to its source, a small script stores where the visit came from in a first-party cookie named `pa_src` for 30 minutes: the referring site's host name and the utm_source, utm_medium and ref tags, never full addresses.
 
 You need a PingAura API key with the write scope and the Domain ID from PingAura's Domain settings. Without Elementor Pro, nothing is sent.
@@ -187,7 +188,7 @@ Elementor Pro forms, once you turn on form leads. A submission needs an email ad
 
 = Can the form break if PingAura is down? =
 
-No. The submission is sent after the visitor sees the form's reply, and any error is ignored. The settings page shows the last reply from PingAura when your server can wait for it (PHP-FPM or LiteSpeed).
+No. Any error is ignored. On most hosts the submission is sent after the visitor gets the form's reply; on others, such as Apache with mod_php, it adds at most about a second. The settings page shows the last reply from PingAura when your server can wait for it (PHP-FPM or LiteSpeed).
 
 = What does the reply on the settings page mean? =
 
@@ -196,7 +197,7 @@ No. The submission is sent after the visitor sees the form's reply, and any erro
 == Changelog ==
 
 = 1.4.0 =
-* Optional: send Elementor Pro form submissions to PingAura Leads, with the AI assistant or other source that brought the visitor. Fields are matched by type, phone numbers are sent in international format, and the form is never slowed down.
+* Optional: send Elementor Pro form submissions to PingAura Leads, with the AI assistant or other source that brought the visitor. Fields are matched by type, phone numbers are sent in international format, and on most hosts the form's reply is not delayed.
 * Optional: add the page title and link to WhatsApp chat links that have no message.
 * New settings: Send form submissions to PingAura Leads, Leads API key, Domain ID, Default country code, and the WhatsApp link option. All are off or empty by default.
 

@@ -108,7 +108,7 @@ final class PingAura_Telemetry_Admin {
 
 		PingAura_Telemetry_Settings::save( $input );
 		PingAura_Telemetry_IndexNow::set_enabled( ! empty( $input['indexnow'] ) );
-		PingAura_Telemetry_Leads::save( $leads );
+		$key_rejected = PingAura_Telemetry_Leads::save( $leads );
 
 		// Page caches keep serving the old script until they are cleared.
 		do_action( 'litespeed_purge_all' ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- LiteSpeed Cache's own purge hook.
@@ -117,6 +117,10 @@ final class PingAura_Telemetry_Admin {
 		}
 		if ( function_exists( 'rocket_clean_domain' ) ) {
 			rocket_clean_domain();
+		}
+
+		if ( $key_rejected ) {
+			self::redirect( __( 'Settings saved, but that API key doesn\'t look right. The previous key was kept.', 'pingaura-telemetry' ), 'error' );
 		}
 
 		self::redirect( __( 'Settings saved.', 'pingaura-telemetry' ) );
@@ -236,7 +240,11 @@ final class PingAura_Telemetry_Admin {
 			<h1><?php esc_html_e( 'PingAura AI Settings', 'pingaura-telemetry' ); ?></h1>
 
 			<?php if ( $notice ) : ?>
-				<div class="notice notice-info is-dismissible"><p><?php echo esc_html( $notice ); ?></p></div>
+				<?php
+				$notice_type = is_array( $notice ) && isset( $notice['type'] ) && 'error' === $notice['type'] ? 'error' : 'info';
+				$notice_text = is_array( $notice ) ? ( isset( $notice['message'] ) ? (string) $notice['message'] : '' ) : (string) $notice;
+				?>
+				<div class="notice notice-<?php echo esc_attr( $notice_type ); ?> is-dismissible"><p><?php echo esc_html( $notice_text ); ?></p></div>
 			<?php endif; ?>
 
 			<p>
@@ -363,7 +371,7 @@ final class PingAura_Telemetry_Admin {
 								<input type="checkbox" name="<?php echo esc_attr( $lname ); ?>[enabled]" value="1" <?php checked( $leads['enabled'] ); ?>>
 								<?php esc_html_e( 'Send form submissions to PingAura Leads', 'pingaura-telemetry' ); ?>
 							</label>
-							<p class="description"><?php esc_html_e( 'Elementor Pro forms with an email or phone field. Fields are matched by type: email, phone, the first paragraph field as the message, a Name field, and other answers as custom fields. Each submission is sent after the visitor sees the form\'s reply, so the form is never slowed down. Elementor\'s own actions, such as its email, keep working.', 'pingaura-telemetry' ); ?></p>
+							<p class="description"><?php esc_html_e( 'Elementor Pro forms with an email or phone field. Fields are matched by type: email, phone, the first paragraph field as the message, a Name field, and other answers as custom fields. On most hosts each submission is sent after the visitor gets the form\'s reply; on others it adds at most about a second. Elementor\'s own actions, such as its email, keep working.', 'pingaura-telemetry' ); ?></p>
 							<?php if ( $leads['enabled'] && ! defined( 'ELEMENTOR_PRO_VERSION' ) ) : ?>
 								<p class="description"><?php esc_html_e( 'Elementor Pro is not active, so nothing is sent.', 'pingaura-telemetry' ); ?></p>
 							<?php endif; ?>
@@ -500,9 +508,17 @@ final class PingAura_Telemetry_Admin {
 	 * Returns to the settings page with a notice.
 	 *
 	 * @param string $message Notice text.
+	 * @param string $type    'info' or 'error'.
 	 */
-	private static function redirect( $message ) {
-		set_transient( self::notice_key(), $message, MINUTE_IN_SECONDS );
+	private static function redirect( $message, $type = 'info' ) {
+		set_transient(
+			self::notice_key(),
+			array(
+				'message' => $message,
+				'type'    => $type,
+			),
+			MINUTE_IN_SECONDS
+		);
 		wp_safe_redirect( self::page_url() );
 		exit;
 	}

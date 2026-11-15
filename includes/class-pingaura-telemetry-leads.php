@@ -11,11 +11,13 @@ defined( 'ABSPATH' ) || exit;
  * Sends Elementor Pro form submissions to PingAura Leads, and adds the page
  * to WhatsApp chat links that have no message. Both are off by default.
  *
- * A submission is sent after the response to the visitor has been sent, so
- * the form is never slowed down or broken by PingAura. Where the server can
- * finish the response early (PHP-FPM or LiteSpeed), the request waits up to
- * five seconds for PingAura's answer and records its HTTP status. Elsewhere
- * it is sent without waiting for an answer.
+ * A submission is sent once the response to the visitor is complete, so the
+ * form never fails because of PingAura. Where the server can close the
+ * connection to the visitor early (PHP-FPM or LiteSpeed), the request waits
+ * up to five seconds for PingAura's answer and records its HTTP status. On
+ * other servers, such as Apache with mod_php, the visitor's connection stays
+ * open until PHP finishes, so the request is capped at one second and its
+ * answer is not read: the form's reply can arrive up to about a second later.
  */
 final class PingAura_Telemetry_Leads {
 
@@ -31,7 +33,7 @@ final class PingAura_Telemetry_Leads {
 
 	const BLOCKING_TIMEOUT = 5;
 
-	const NON_BLOCKING_TIMEOUT = 3;
+	const NON_BLOCKING_TIMEOUT = 1;
 
 	/**
 	 * Registers hooks.
@@ -69,8 +71,11 @@ final class PingAura_Telemetry_Leads {
 	 * A blank or malformed API key keeps the stored one, as for the ingest key.
 	 *
 	 * @param array $input Raw form values.
+	 * @return bool Whether a malformed API key was submitted and ignored.
 	 */
 	public static function save( array $input ) {
+		$rejected = false;
+
 		$current = self::get();
 		$key     = isset( $input['api_key'] ) ? trim( sanitize_text_field( $input['api_key'] ) ) : '';
 		$domain  = isset( $input['domain_id'] ) ? strtolower( trim( sanitize_text_field( $input['domain_id'] ) ) ) : '';
@@ -79,7 +84,8 @@ final class PingAura_Telemetry_Leads {
 		if ( ! empty( $input['clear_api_key'] ) ) {
 			$key = '';
 		} elseif ( ! PingAura_Telemetry_Lead_Mapper::is_valid_api_key( $key ) ) {
-			$key = $current['api_key'];
+			$rejected = '' !== $key;
+			$key      = $current['api_key'];
 		}
 
 		if ( '' !== $domain && ! PingAura_Telemetry_Lead_Mapper::is_uuid( $domain ) ) {
@@ -97,6 +103,8 @@ final class PingAura_Telemetry_Leads {
 			),
 			true
 		);
+
+		return $rejected;
 	}
 
 	/**
@@ -190,7 +198,7 @@ final class PingAura_Telemetry_Leads {
 			}
 		}
 
-		$body['consent_state'] = $lead['consent'] ? 'granted' : 'not_required';
+		$body['consent_state'] = $lead['consent_state'];
 		$body['external_id']   = 'elementor-' . ( '' !== $form_key ? $form_key : 'form' ) . '-' . wp_generate_uuid4();
 		$body['source_meta']   = array(
 			'form' => $form,
@@ -379,7 +387,13 @@ final class PingAura_Telemetry_Leads {
 				$sent = true;
 
 				$finished = self::finish_response();
+				if ( ! $finished ) {
+					// Keep running if the visitor leaves, and send what is buffered.
+					ignore_user_abort( true );
+					flush();
+				}
 
+				// The total timeout also bounds the connection time.
 				$args['blocking'] = $finished;
 				$args['timeout']  = $finished ? self::BLOCKING_TIMEOUT : self::NON_BLOCKING_TIMEOUT;
 

@@ -42,6 +42,9 @@ check( 'country code without plus', '+919876543210', $m::normalize_phone( '91987
 check( 'other default code', '+19876543210', $m::normalize_phone( '9876543210', '+1' ) );
 check( 'invalid default falls back to +91', '+919876543210', $m::normalize_phone( '9876543210', 'abc' ) );
 check( 'too short', '', $m::normalize_phone( '12345', '+91' ) );
+check( 'zero in brackets after code', '+919876543210', $m::normalize_phone( '+91 (0) 98765 43210', '+91' ) );
+check( 'zero after code', '+919876543210', $m::normalize_phone( '+91 09876543210', '+91' ) );
+check( 'zero after code, 00 prefix', '+919876543210', $m::normalize_phone( '0091 09876543210', '+91' ) );
 check( 'letters', '', $m::normalize_phone( 'call me', '+91' ) );
 check( 'plus zero', '', $m::normalize_phone( '+0123456789', '+91' ) );
 check( 'too long', '', $m::normalize_phone( '+1234567890123456', '+91' ) );
@@ -141,7 +144,7 @@ check( 'name by label', 'Asha', isset( $lead['name'] ) ? $lead['name'] : null );
 check( 'email by type, lowercased', 'asha@example.com', isset( $lead['email'] ) ? $lead['email'] : null );
 check( 'phone by type', '+919876543210', isset( $lead['phone'] ) ? $lead['phone'] : null );
 check( 'message', 'Hello', isset( $lead['message'] ) ? $lead['message'] : null );
-check( 'consent', true, $lead['consent'] );
+check( 'consent ticked', 'granted', $lead['consent_state'] );
 check(
 	'custom fields',
 	array(
@@ -177,7 +180,7 @@ $none = $m::map_fields(
 );
 check( 'invalid email dropped', false, isset( $none['email'] ) );
 check( 'invalid phone dropped', false, isset( $none['phone'] ) );
-check( 'no consent', false, $none['consent'] );
+check( 'no acceptance field', 'unknown', $none['consent_state'] );
 
 $long = $m::map_fields(
 	array(
@@ -202,6 +205,122 @@ for ( $i = 0; $i < 25; $i++ ) {
 	);
 }
 check( 'custom fields capped', 20, count( $m::map_fields( $many, '+91' )['custom_fields'] ) );
+
+// Consent.
+$unticked = $m::map_fields(
+	array(
+		array(
+			'id'    => 'mail',
+			'type'  => 'email',
+			'title' => 'Email',
+			'value' => 'a@example.com',
+		),
+		array(
+			'id'    => 'ok',
+			'type'  => 'acceptance',
+			'title' => 'I agree',
+			'value' => '',
+		),
+	),
+	'+91'
+);
+check( 'acceptance unticked', 'refused', $unticked['consent_state'] );
+
+// Phone in a text field.
+$text_phone = $m::map_fields(
+	array(
+		array(
+			'id'    => 'field_9',
+			'type'  => 'text',
+			'title' => 'Mobile',
+			'value' => '98765 43210',
+		),
+		array(
+			'id'    => 'whatsapp',
+			'type'  => 'text',
+			'title' => 'Other',
+			'value' => '91234 56789',
+		),
+	),
+	'+91'
+);
+check( 'phone from text field, email-less form', '+919876543210', isset( $text_phone['phone'] ) ? $text_phone['phone'] : null );
+check( 'second phone-like text field kept as custom', array( 'whatsapp' => '91234 56789' ), $text_phone['custom_fields'] );
+
+$text_and_tel = $m::map_fields(
+	array(
+		array(
+			'id'    => 'contact_number',
+			'type'  => 'text',
+			'title' => 'Contact number',
+			'value' => '91234 56789',
+		),
+		array(
+			'id'    => 'tel',
+			'type'  => 'tel',
+			'title' => 'Phone',
+			'value' => '9876543210',
+		),
+	),
+	'+91'
+);
+check( 'tel field wins over text phone', '+919876543210', $text_and_tel['phone'] );
+check( 'text phone kept as custom when tel gave one', array( 'contact_number' => '91234 56789' ), $text_and_tel['custom_fields'] );
+
+$bad_text_phone = $m::map_fields(
+	array(
+		array(
+			'id'    => 'phone',
+			'type'  => 'text',
+			'title' => 'Phone',
+			'value' => 'call after 5',
+		),
+	),
+	'+91'
+);
+check( 'unreadable text phone not used', false, isset( $bad_text_phone['phone'] ) );
+check( 'unreadable text phone kept as custom', array( 'phone' => 'call after 5' ), $bad_text_phone['custom_fields'] );
+
+$by_label = $m::map_fields(
+	array(
+		array(
+			'id'    => 'field_abc',
+			'type'  => 'text',
+			'title' => 'Phone Number',
+			'value' => '+1 415 555 0123',
+		),
+	),
+	'+91'
+);
+check( 'text phone by label', '+14155550123', isset( $by_label['phone'] ) ? $by_label['phone'] : null );
+
+// Checkboxes.
+$boxes = $m::map_fields(
+	array(
+		array(
+			'id'        => 'services',
+			'type'      => 'checkbox',
+			'title'     => 'Services',
+			'value'     => '',
+			'raw_value' => array( 'SEO', 'Ads' ),
+		),
+		array(
+			'id'    => 'size',
+			'type'  => 'radio',
+			'title' => 'Size',
+			'value' => 'Small',
+		),
+	),
+	'+91'
+);
+check(
+	'checkbox and radio as custom fields',
+	array(
+		'services' => 'SEO, Ads',
+		'size'     => 'Small',
+	),
+	$boxes['custom_fields']
+);
 
 // Source cookie.
 check(

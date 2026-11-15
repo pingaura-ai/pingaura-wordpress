@@ -31,12 +31,18 @@ final class PingAura_Telemetry_Lead_Mapper {
 	/**
 	 * Field types sent as custom fields.
 	 */
-	const CUSTOM_TYPES = array( 'text', 'select', 'radio', 'number', 'date', 'textarea' );
+	const CUSTOM_TYPES = array( 'text', 'select', 'radio', 'checkbox', 'number', 'date', 'textarea' );
 
 	/**
 	 * Field ids and labels, as slugs, that hold the visitor's name.
 	 */
 	const NAME_SLUGS = array( 'name', 'full_name', 'fullname', 'your_name', 'yourname' );
+
+	/**
+	 * Field ids and labels, as slugs, of text fields that may hold a phone
+	 * number. Used only when no phone field gave one.
+	 */
+	const PHONE_SLUGS = array( 'phone', 'mobile', 'whatsapp', 'contact_number', 'contact', 'phone_number' );
 
 	/**
 	 * Referrer domains of AI assistants. A host matches a domain or any of its
@@ -88,17 +94,23 @@ final class PingAura_Telemetry_Lead_Mapper {
 	 * Builds the lead fields from a list of form fields.
 	 *
 	 * Fields are matched by type, not by id, because ids are often left at
-	 * their defaults or mislabelled.
+	 * their defaults or mislabelled. A text field named like a phone number
+	 * is used as the phone only when no phone field gave one.
+	 *
+	 * consent_state is granted when the form has a ticked acceptance field,
+	 * refused when it has an unticked one, and unknown when it has none.
 	 *
 	 * @param array  $fields       Form fields, each with type, id, title and value.
 	 * @param string $country_code Country code for numbers entered without one.
-	 * @return array{name?: string, email?: string, phone?: string, message?: string, custom_fields: array<string, string>, consent: bool}
+	 * @return array{name?: string, email?: string, phone?: string, message?: string, custom_fields: array<string, string>, consent_state: string}
 	 */
 	public static function map_fields( array $fields, $country_code ) {
 		$lead = array(
 			'custom_fields' => array(),
-			'consent'       => false,
+			'consent_state' => 'unknown',
 		);
+
+		$tel_phone = self::first_tel_phone( $fields, $country_code );
 
 		foreach ( $fields as $field_key => $field ) {
 			if ( ! is_array( $field ) ) {
@@ -112,7 +124,9 @@ final class PingAura_Telemetry_Lead_Mapper {
 
 			if ( 'acceptance' === $type ) {
 				if ( '' !== $value ) {
-					$lead['consent'] = true;
+					$lead['consent_state'] = 'granted';
+				} elseif ( 'granted' !== $lead['consent_state'] ) {
+					$lead['consent_state'] = 'refused';
 				}
 				continue;
 			}
@@ -128,13 +142,18 @@ final class PingAura_Telemetry_Lead_Mapper {
 			}
 
 			if ( 'tel' === $type ) {
-				if ( ! isset( $lead['phone'] ) ) {
-					$phone = self::normalize_phone( $value, $country_code );
-					if ( '' !== $phone ) {
-						$lead['phone'] = $phone;
-					}
+				if ( ! isset( $lead['phone'] ) && '' !== $tel_phone ) {
+					$lead['phone'] = $tel_phone;
 				}
 				continue;
+			}
+
+			if ( 'text' === $type && '' === $tel_phone && ! isset( $lead['phone'] ) && self::slug_in( $id, $label, self::PHONE_SLUGS ) ) {
+				$phone = self::normalize_phone( $value, $country_code );
+				if ( '' !== $phone ) {
+					$lead['phone'] = $phone;
+					continue;
+				}
 			}
 
 			if ( 'textarea' === $type && ! isset( $lead['message'] ) ) {
@@ -142,7 +161,7 @@ final class PingAura_Telemetry_Lead_Mapper {
 				continue;
 			}
 
-			if ( 'text' === $type && ! isset( $lead['name'] ) && self::is_name_field( $id, $label ) ) {
+			if ( 'text' === $type && ! isset( $lead['name'] ) && self::slug_in( $id, $label, self::NAME_SLUGS ) ) {
 				$lead['name'] = self::truncate( $value, self::MAX_TEXT );
 				continue;
 			}
@@ -172,6 +191,7 @@ final class PingAura_Telemetry_Lead_Mapper {
 	 * @param string $raw          Number as typed.
 	 * @param string $country_code Country code such as +91, used for a bare
 	 *                             10-digit number or one with a leading 0.
+	 *                             A 0 typed right after it is dropped.
 	 * @return string
 	 */
 	public static function normalize_phone( $raw, $country_code ) {
@@ -190,6 +210,11 @@ final class PingAura_Telemetry_Lead_Mapper {
 		} elseif ( 1 === preg_match( '/^\d+$/', $phone ) && strlen( $phone ) === strlen( $cc ) - 1 + 10 && 0 === strpos( $phone, substr( $cc, 1 ) ) ) {
 			// The country code typed without its plus sign, such as 919876543210.
 			$phone = '+' . $phone;
+		}
+
+		// A trunk 0 kept after the country code, such as +91 (0) 98765 43210.
+		if ( 0 === strpos( $phone, $cc . '0' ) ) {
+			$phone = $cc . substr( $phone, strlen( $cc ) + 1 );
 		}
 
 		return 1 === preg_match( '/^\+[1-9]\d{6,14}$/', $phone ) ? $phone : '';
@@ -383,15 +408,37 @@ final class PingAura_Telemetry_Lead_Mapper {
 	}
 
 	/**
-	 * Whether a text field holds the visitor's name.
+	 * Whether a field's id or label, as a slug, is one of the given slugs.
 	 *
-	 * @param string $id    Field id.
-	 * @param string $label Field label.
+	 * @param string   $id    Field id.
+	 * @param string   $label Field label.
+	 * @param string[] $slugs Slugs.
 	 * @return bool
 	 */
-	private static function is_name_field( $id, $label ) {
-		return in_array( self::slug( $id, self::MAX_KEY ), self::NAME_SLUGS, true )
-			|| in_array( self::slug( $label, self::MAX_KEY ), self::NAME_SLUGS, true );
+	private static function slug_in( $id, $label, array $slugs ) {
+		return in_array( self::slug( $id, self::MAX_KEY ), $slugs, true )
+			|| in_array( self::slug( $label, self::MAX_KEY ), $slugs, true );
+	}
+
+	/**
+	 * The first phone field value that reads as a phone number, in E.164, or
+	 * an empty string.
+	 *
+	 * @param array  $fields       Form fields.
+	 * @param string $country_code Default country code.
+	 * @return string
+	 */
+	private static function first_tel_phone( array $fields, $country_code ) {
+		foreach ( $fields as $field ) {
+			if ( ! is_array( $field ) || ! isset( $field['type'] ) || ! is_string( $field['type'] ) || 'tel' !== strtolower( $field['type'] ) ) {
+				continue;
+			}
+			$phone = self::normalize_phone( self::field_value( $field ), $country_code );
+			if ( '' !== $phone ) {
+				return $phone;
+			}
+		}
+		return '';
 	}
 
 	/**
