@@ -21,8 +21,6 @@ final class PingAura_Telemetry_Lead_Mapper {
 
 	const MAX_CUSTOM_FIELDS = 20;
 
-	const DEFAULT_COUNTRY_CODE = '+91';
-
 	/**
 	 * Field types that are never sent.
 	 */
@@ -97,20 +95,23 @@ final class PingAura_Telemetry_Lead_Mapper {
 	 * their defaults or mislabelled. A text field named like a phone number
 	 * is used as the phone only when no phone field gave one.
 	 *
+	 * A phone number is sent as the phone only when it includes its country
+	 * code. Otherwise it is kept as the custom field phone, so it is not lost
+	 * when the form also has an email address.
+	 *
 	 * consent_state is granted when the form has a ticked acceptance field,
 	 * refused when it has an unticked one, and unknown when it has none.
 	 *
-	 * @param array  $fields       Form fields, each with type, id, title and value.
-	 * @param string $country_code Country code for numbers entered without one.
+	 * @param array $fields Form fields, each with type, id, title and value.
 	 * @return array{name?: string, email?: string, phone?: string, message?: string, custom_fields: array<string, string>, consent_state: string}
 	 */
-	public static function map_fields( array $fields, $country_code ) {
+	public static function map_fields( array $fields ) {
 		$lead = array(
 			'custom_fields' => array(),
 			'consent_state' => 'unknown',
 		);
 
-		$tel_phone = self::first_tel_phone( $fields, $country_code );
+		$tel_phone = self::first_tel_phone( $fields );
 
 		foreach ( $fields as $field_key => $field ) {
 			if ( ! is_array( $field ) ) {
@@ -142,16 +143,23 @@ final class PingAura_Telemetry_Lead_Mapper {
 			}
 
 			if ( 'tel' === $type ) {
-				if ( ! isset( $lead['phone'] ) && '' !== $tel_phone ) {
-					$lead['phone'] = $tel_phone;
+				$phone = self::normalize_phone( $value );
+				if ( '' !== $phone && ! isset( $lead['phone'] ) ) {
+					$lead['phone'] = $phone;
+				} elseif ( '' === $phone && ! isset( $lead['custom_fields']['phone'] ) && count( $lead['custom_fields'] ) < self::MAX_CUSTOM_FIELDS ) {
+					$lead['custom_fields']['phone'] = self::truncate( $value, self::MAX_TEXT );
 				}
 				continue;
 			}
 
 			if ( 'text' === $type && '' === $tel_phone && ! isset( $lead['phone'] ) && self::slug_in( $id, $label, self::PHONE_SLUGS ) ) {
-				$phone = self::normalize_phone( $value, $country_code );
+				$phone = self::normalize_phone( $value );
 				if ( '' !== $phone ) {
 					$lead['phone'] = $phone;
+					continue;
+				}
+				if ( ! isset( $lead['custom_fields']['phone'] ) && count( $lead['custom_fields'] ) < self::MAX_CUSTOM_FIELDS ) {
+					$lead['custom_fields']['phone'] = self::truncate( $value, self::MAX_TEXT );
 					continue;
 				}
 			}
@@ -185,53 +193,27 @@ final class PingAura_Telemetry_Lead_Mapper {
 	}
 
 	/**
-	 * Turns a phone number into E.164 (+919876543210), or an empty string when
-	 * it cannot be read as one.
+	 * A phone number in E.164 (+919876543210), or an empty string when it is
+	 * not one. No country code is ever added: a number typed without one is
+	 * not a phone number here.
 	 *
-	 * @param string $raw          Number as typed.
-	 * @param string $country_code Country code such as +91, used for a bare
-	 *                             10-digit number or one with a leading 0.
-	 *                             A 0 typed right after it is dropped.
+	 * Spaces, dashes, dots and brackets are removed, a leading 00 becomes +,
+	 * and a (0) written after the country code, as in +44 (0)20 7946 0958, is
+	 * removed. No other digit is changed.
+	 *
+	 * @param string $raw Number as typed.
 	 * @return string
 	 */
-	public static function normalize_phone( $raw, $country_code ) {
-		$phone = preg_replace( '/[\s\-.()\[\]]/u', '', trim( (string) $raw ) );
-		$cc    = self::normalize_country_code( $country_code );
-		$cc    = '' !== $cc ? $cc : self::DEFAULT_COUNTRY_CODE;
+	public static function normalize_phone( $raw ) {
+		$phone = trim( (string) $raw );
+		$phone = (string) preg_replace( '/^(?:\+|00)\s*([1-9]\d{0,2})[\s.\-]*\(0\)/', '+$1', $phone );
+		$phone = (string) preg_replace( '/[\s\-.()\[\]]/u', '', $phone );
 
 		if ( 0 === strpos( $phone, '00' ) ) {
 			$phone = '+' . substr( $phone, 2 );
 		}
 
-		if ( 1 === preg_match( '/^\d{10}$/', $phone ) ) {
-			$phone = $cc . $phone;
-		} elseif ( 1 === preg_match( '/^0(\d{10})$/', $phone, $match ) ) {
-			$phone = $cc . $match[1];
-		} elseif ( 1 === preg_match( '/^\d+$/', $phone ) && strlen( $phone ) === strlen( $cc ) - 1 + 10 && 0 === strpos( $phone, substr( $cc, 1 ) ) ) {
-			// The country code typed without its plus sign, such as 919876543210.
-			$phone = '+' . $phone;
-		}
-
-		// A trunk 0 kept after the country code, such as +91 (0) 98765 43210.
-		if ( 0 === strpos( $phone, $cc . '0' ) ) {
-			$phone = $cc . substr( $phone, strlen( $cc ) + 1 );
-		}
-
-		return 1 === preg_match( '/^\+[1-9]\d{6,14}$/', $phone ) ? $phone : '';
-	}
-
-	/**
-	 * A country code such as +91, or an empty string when the value is not one.
-	 *
-	 * @param string $value Country code, with or without the plus sign.
-	 * @return string
-	 */
-	public static function normalize_country_code( $value ) {
-		$value = preg_replace( '/[\s\-]/', '', trim( (string) $value ) );
-		if ( '' !== $value && '+' !== $value[0] ) {
-			$value = '+' . $value;
-		}
-		return 1 === preg_match( '/^\+[1-9]\d{0,3}$/', $value ) ? $value : '';
+		return 1 === preg_match( '/^\+[1-9]\d{7,14}$/', $phone ) ? $phone : '';
 	}
 
 	/**
@@ -424,16 +406,15 @@ final class PingAura_Telemetry_Lead_Mapper {
 	 * The first phone field value that reads as a phone number, in E.164, or
 	 * an empty string.
 	 *
-	 * @param array  $fields       Form fields.
-	 * @param string $country_code Default country code.
+	 * @param array $fields Form fields.
 	 * @return string
 	 */
-	private static function first_tel_phone( array $fields, $country_code ) {
+	private static function first_tel_phone( array $fields ) {
 		foreach ( $fields as $field ) {
 			if ( ! is_array( $field ) || ! isset( $field['type'] ) || ! is_string( $field['type'] ) || 'tel' !== strtolower( $field['type'] ) ) {
 				continue;
 			}
-			$phone = self::normalize_phone( self::field_value( $field ), $country_code );
+			$phone = self::normalize_phone( self::field_value( $field ) );
 			if ( '' !== $phone ) {
 				return $phone;
 			}

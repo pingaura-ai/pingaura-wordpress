@@ -31,29 +31,24 @@ function check( $name, $expected, $actual ) {
 
 $m = 'PingAura_Telemetry_Lead_Mapper';
 
-// Phone numbers.
-check( 'bare 10 digits', '+919876543210', $m::normalize_phone( '9876543210', '+91' ) );
-check( 'spaces and dashes', '+919876543210', $m::normalize_phone( '98765 43-210', '+91' ) );
-check( 'brackets and dots', '+919876543210', $m::normalize_phone( '(98765).43210', '+91' ) );
-check( 'trunk zero', '+919876543210', $m::normalize_phone( '09876543210', '+91' ) );
-check( '00 prefix', '+447911123456', $m::normalize_phone( '0044 7911 123456', '+91' ) );
-check( 'already E.164', '+14155550123', $m::normalize_phone( '+1 (415) 555-0123', '+91' ) );
-check( 'country code without plus', '+919876543210', $m::normalize_phone( '919876543210', '+91' ) );
-check( 'other default code', '+19876543210', $m::normalize_phone( '9876543210', '+1' ) );
-check( 'invalid default falls back to +91', '+919876543210', $m::normalize_phone( '9876543210', 'abc' ) );
-check( 'too short', '', $m::normalize_phone( '12345', '+91' ) );
-check( 'zero in brackets after code', '+919876543210', $m::normalize_phone( '+91 (0) 98765 43210', '+91' ) );
-check( 'zero after code', '+919876543210', $m::normalize_phone( '+91 09876543210', '+91' ) );
-check( 'zero after code, 00 prefix', '+919876543210', $m::normalize_phone( '0091 09876543210', '+91' ) );
-check( 'letters', '', $m::normalize_phone( 'call me', '+91' ) );
-check( 'plus zero', '', $m::normalize_phone( '+0123456789', '+91' ) );
-check( 'too long', '', $m::normalize_phone( '+1234567890123456', '+91' ) );
-
-// Country codes.
-check( 'country code with plus', '+91', $m::normalize_country_code( '+91' ) );
-check( 'country code without plus', '+44', $m::normalize_country_code( '44' ) );
-check( 'country code invalid', '', $m::normalize_country_code( '+0' ) );
-check( 'country code too long', '', $m::normalize_country_code( '+12345' ) );
+// Phone numbers: never given a country code by the plugin.
+check( 'E.164 with spaces', '+919876543210', $m::normalize_phone( '+91 98765 43210' ) );
+check( 'dashes, dots and brackets', '+14155550123', $m::normalize_phone( '+1 (415) 555-0123' ) );
+check( 'dots', '+919876543210', $m::normalize_phone( '+91.98765.43210' ) );
+check( '00 prefix', '+919876543210', $m::normalize_phone( '0091 98765 43210' ) );
+check( '00 prefix, UK', '+447911123456', $m::normalize_phone( '0044 7911 123456' ) );
+check( '(0) after code', '+919876543210', $m::normalize_phone( '+91 (0) 98765 43210' ) );
+check( '(0) after code, UK', '+442079460958', $m::normalize_phone( '+44 (0)20 7946 0958' ) );
+check( '(0) after 00 code', '+442079460958', $m::normalize_phone( '0044 (0) 20 7946 0958' ) );
+check( 'other 0 after code is kept', '+9109876543210', $m::normalize_phone( '+91 09876543210' ) );
+check( 'bare 10 digits is not a phone', '', $m::normalize_phone( '9876543210' ) );
+check( 'trunk 0 without code is not a phone', '', $m::normalize_phone( '09876543210' ) );
+check( 'code without plus is not a phone', '', $m::normalize_phone( '919876543210' ) );
+check( 'too short', '', $m::normalize_phone( '+1234567' ) );
+check( 'shortest', '+12345678', $m::normalize_phone( '+12345678' ) );
+check( 'letters', '', $m::normalize_phone( 'call me' ) );
+check( 'plus zero', '', $m::normalize_phone( '+0123456789' ) );
+check( 'too long', '', $m::normalize_phone( '+1234567890123456' ) );
 
 // Slugs.
 check( 'slug label', 'company_name', $m::slug( 'Company Name', 40 ) );
@@ -74,7 +69,7 @@ $fields = array(
 		'id'    => 'email',
 		'type'  => 'tel',
 		'title' => 'Phone',
-		'value' => '098765 43210',
+		'value' => '+91 98765 43210',
 	),
 	'phone'   => array(
 		'id'    => 'phone',
@@ -139,7 +134,7 @@ $fields = array(
 	),
 );
 
-$lead = $m::map_fields( $fields, '+91' );
+$lead = $m::map_fields( $fields );
 check( 'name by label', 'Asha', isset( $lead['name'] ) ? $lead['name'] : null );
 check( 'email by type, lowercased', 'asha@example.com', isset( $lead['email'] ) ? $lead['email'] : null );
 check( 'phone by type', '+919876543210', isset( $lead['phone'] ) ? $lead['phone'] : null );
@@ -175,8 +170,7 @@ $none = $m::map_fields(
 			'title' => 'Phone',
 			'value' => '123',
 		),
-	),
-	'+91'
+	)
 );
 check( 'invalid email dropped', false, isset( $none['email'] ) );
 check( 'invalid phone dropped', false, isset( $none['phone'] ) );
@@ -190,8 +184,7 @@ $long = $m::map_fields(
 			'title' => 'Notes',
 			'value' => str_repeat( 'a', 6000 ),
 		),
-	),
-	'+91'
+	)
 );
 check( 'value truncated', 5000, strlen( $long['custom_fields']['notes'] ) );
 
@@ -204,7 +197,7 @@ for ( $i = 0; $i < 25; $i++ ) {
 		'value' => 'v',
 	);
 }
-check( 'custom fields capped', 20, count( $m::map_fields( $many, '+91' )['custom_fields'] ) );
+check( 'custom fields capped', 20, count( $m::map_fields( $many )['custom_fields'] ) );
 
 // Consent.
 $unticked = $m::map_fields(
@@ -221,8 +214,7 @@ $unticked = $m::map_fields(
 			'title' => 'I agree',
 			'value' => '',
 		),
-	),
-	'+91'
+	)
 );
 check( 'acceptance unticked', 'refused', $unticked['consent_state'] );
 
@@ -233,7 +225,7 @@ $text_phone = $m::map_fields(
 			'id'    => 'field_9',
 			'type'  => 'text',
 			'title' => 'Mobile',
-			'value' => '98765 43210',
+			'value' => '+91 98765 43210',
 		),
 		array(
 			'id'    => 'whatsapp',
@@ -241,8 +233,7 @@ $text_phone = $m::map_fields(
 			'title' => 'Other',
 			'value' => '91234 56789',
 		),
-	),
-	'+91'
+	)
 );
 check( 'phone from text field, email-less form', '+919876543210', isset( $text_phone['phone'] ) ? $text_phone['phone'] : null );
 check( 'second phone-like text field kept as custom', array( 'whatsapp' => '91234 56789' ), $text_phone['custom_fields'] );
@@ -259,10 +250,9 @@ $text_and_tel = $m::map_fields(
 			'id'    => 'tel',
 			'type'  => 'tel',
 			'title' => 'Phone',
-			'value' => '9876543210',
+			'value' => '+91 9876543210',
 		),
-	),
-	'+91'
+	)
 );
 check( 'tel field wins over text phone', '+919876543210', $text_and_tel['phone'] );
 check( 'text phone kept as custom when tel gave one', array( 'contact_number' => '91234 56789' ), $text_and_tel['custom_fields'] );
@@ -275,11 +265,62 @@ $bad_text_phone = $m::map_fields(
 			'title' => 'Phone',
 			'value' => 'call after 5',
 		),
-	),
-	'+91'
+	)
 );
 check( 'unreadable text phone not used', false, isset( $bad_text_phone['phone'] ) );
 check( 'unreadable text phone kept as custom', array( 'phone' => 'call after 5' ), $bad_text_phone['custom_fields'] );
+
+// Numbers without a country code are kept as the custom field phone.
+$bare_tel = $m::map_fields(
+	array(
+		array(
+			'id'    => 'mail',
+			'type'  => 'email',
+			'title' => 'Email',
+			'value' => 'a@example.com',
+		),
+		array(
+			'id'    => 'field_7',
+			'type'  => 'tel',
+			'title' => 'Phone',
+			'value' => '98765 43210',
+		),
+	)
+);
+check( 'bare tel not sent as phone', false, isset( $bare_tel['phone'] ) );
+check( 'bare tel kept as custom phone', array( 'phone' => '98765 43210' ), $bare_tel['custom_fields'] );
+
+$only_bare = $m::map_fields(
+	array(
+		array(
+			'id'    => 'tel',
+			'type'  => 'tel',
+			'title' => 'Phone',
+			'value' => '9876543210',
+		),
+	)
+);
+check( 'only bare tel: no email', false, isset( $only_bare['email'] ) );
+check( 'only bare tel: no phone', false, isset( $only_bare['phone'] ) );
+
+$bare_text = $m::map_fields(
+	array(
+		array(
+			'id'    => 'mail',
+			'type'  => 'email',
+			'title' => 'Email',
+			'value' => 'a@example.com',
+		),
+		array(
+			'id'    => 'field_3',
+			'type'  => 'text',
+			'title' => 'Mobile',
+			'value' => '09876543210',
+		),
+	)
+);
+check( 'bare text phone not sent as phone', false, isset( $bare_text['phone'] ) );
+check( 'bare text phone kept as custom phone', array( 'phone' => '09876543210' ), $bare_text['custom_fields'] );
 
 $by_label = $m::map_fields(
 	array(
@@ -289,8 +330,7 @@ $by_label = $m::map_fields(
 			'title' => 'Phone Number',
 			'value' => '+1 415 555 0123',
 		),
-	),
-	'+91'
+	)
 );
 check( 'text phone by label', '+14155550123', isset( $by_label['phone'] ) ? $by_label['phone'] : null );
 
@@ -310,8 +350,7 @@ $boxes = $m::map_fields(
 			'title' => 'Size',
 			'value' => 'Small',
 		),
-	),
-	'+91'
+	)
 );
 check(
 	'checkbox and radio as custom fields',

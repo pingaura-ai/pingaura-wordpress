@@ -371,7 +371,7 @@ final class PingAura_Telemetry_Admin {
 								<input type="checkbox" name="<?php echo esc_attr( $lname ); ?>[enabled]" value="1" <?php checked( $leads['enabled'] ); ?>>
 								<?php esc_html_e( 'Send form submissions to PingAura Leads', 'pingaura-telemetry' ); ?>
 							</label>
-							<p class="description"><?php esc_html_e( 'Elementor Pro forms with an email or phone field. Fields are matched by type: email, phone, the first paragraph field as the message, a Name field, and other answers as custom fields. On most hosts each submission is sent after the visitor gets the form\'s reply; on others it adds at most about a second. Elementor\'s own actions, such as its email, keep working.', 'pingaura-telemetry' ); ?></p>
+							<p class="description"><?php esc_html_e( 'Elementor Pro forms with an email or phone field. Fields are matched by type: email, phone, the first paragraph field as the message, a Name field, and other answers as custom fields. Phone numbers must include the country code (for example +91 98765 43210); ask for it on your form. A number without one is kept as a custom field, not as the phone. On most hosts each submission is sent after the visitor gets the form\'s reply; on others it adds at most about a second. Elementor\'s own actions, such as its email, keep working.', 'pingaura-telemetry' ); ?></p>
 							<?php if ( $leads['enabled'] && ! defined( 'ELEMENTOR_PRO_VERSION' ) ) : ?>
 								<p class="description"><?php esc_html_e( 'Elementor Pro is not active, so nothing is sent.', 'pingaura-telemetry' ); ?></p>
 							<?php endif; ?>
@@ -400,13 +400,6 @@ final class PingAura_Telemetry_Admin {
 						<td>
 							<input id="pingaura-leads-domain" type="text" class="regular-text" autocomplete="off" spellcheck="false" name="<?php echo esc_attr( $lname ); ?>[domain_id]" value="<?php echo esc_attr( $leads['domain_id'] ); ?>" placeholder="00000000-0000-0000-0000-000000000000">
 							<p class="description"><?php esc_html_e( 'Find it in PingAura under Domain settings.', 'pingaura-telemetry' ); ?></p>
-						</td>
-					</tr>
-					<tr>
-						<th scope="row"><label for="pingaura-leads-country"><?php esc_html_e( 'Default country code', 'pingaura-telemetry' ); ?></label></th>
-						<td>
-							<input id="pingaura-leads-country" type="text" class="small-text" autocomplete="off" spellcheck="false" name="<?php echo esc_attr( $lname ); ?>[country_code]" value="<?php echo esc_attr( $leads['country_code'] ); ?>">
-							<p class="description"><?php esc_html_e( 'Added to a 10-digit phone number entered without a country code, such as 9876543210.', 'pingaura-telemetry' ); ?></p>
 						</td>
 					</tr>
 					<tr>

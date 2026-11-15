@@ -48,7 +48,7 @@ final class PingAura_Telemetry_Leads {
 	/**
 	 * Settings merged with their defaults.
 	 *
-	 * @return array{enabled: bool, api_key: string, domain_id: string, country_code: string, whatsapp_text: bool}
+	 * @return array{enabled: bool, api_key: string, domain_id: string, whatsapp_text: bool}
 	 */
 	public static function get() {
 		$saved = get_option( self::OPTION, array() );
@@ -59,7 +59,6 @@ final class PingAura_Telemetry_Leads {
 				'enabled'       => false,
 				'api_key'       => '',
 				'domain_id'     => '',
-				'country_code'  => PingAura_Telemetry_Lead_Mapper::DEFAULT_COUNTRY_CODE,
 				'whatsapp_text' => false,
 			)
 		);
@@ -79,7 +78,6 @@ final class PingAura_Telemetry_Leads {
 		$current = self::get();
 		$key     = isset( $input['api_key'] ) ? trim( sanitize_text_field( $input['api_key'] ) ) : '';
 		$domain  = isset( $input['domain_id'] ) ? strtolower( trim( sanitize_text_field( $input['domain_id'] ) ) ) : '';
-		$country = isset( $input['country_code'] ) ? PingAura_Telemetry_Lead_Mapper::normalize_country_code( sanitize_text_field( $input['country_code'] ) ) : '';
 
 		if ( ! empty( $input['clear_api_key'] ) ) {
 			$key = '';
@@ -98,7 +96,6 @@ final class PingAura_Telemetry_Leads {
 				'enabled'       => ! empty( $input['enabled'] ),
 				'api_key'       => $key,
 				'domain_id'     => $domain,
-				'country_code'  => '' !== $country ? $country : PingAura_Telemetry_Lead_Mapper::DEFAULT_COUNTRY_CODE,
 				'whatsapp_text' => ! empty( $input['whatsapp_text'] ),
 			),
 			true
@@ -178,7 +175,7 @@ final class PingAura_Telemetry_Leads {
 	 */
 	public static function build_payload( array $fields, $form_id, $form_name ) {
 		$settings = self::get();
-		$lead     = PingAura_Telemetry_Lead_Mapper::map_fields( $fields, $settings['country_code'] );
+		$lead     = PingAura_Telemetry_Lead_Mapper::map_fields( $fields );
 
 		if ( ! isset( $lead['email'] ) && ! isset( $lead['phone'] ) ) {
 			return null;
